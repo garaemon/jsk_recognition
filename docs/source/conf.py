@@ -11,7 +11,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys, os, subprocess
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -23,9 +23,23 @@ import sys, os
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 
+read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
+
+if read_the_docs_build:
+
+    subprocess.call('cd ../../jsk_pcl_ros; doxygen', shell=True)
+
+
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = []
+extensions = ['breathe']
+
+read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
+
+sys.path.append('../../')
+# breathe_projects = { "myproject": ".." }
+# breathe_default_project = "myproject"
+breath_projects = {"jsk_pcl_ros": "../../jsk_pcl_ros/xml/"}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
