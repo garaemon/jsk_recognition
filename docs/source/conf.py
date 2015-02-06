@@ -25,9 +25,7 @@ import sys, os, subprocess
 
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
-if read_the_docs_build:
-
-    subprocess.call('cd ../../jsk_pcl_ros; doxygen', shell=True)
+subprocess.call('cd ../../jsk_pcl_ros; doxygen', shell=True)
 
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
@@ -40,7 +38,7 @@ sys.path.append('../../')
 # breathe_projects = { "myproject": ".." }
 # breathe_default_project = "myproject"
 breath_projects = {"jsk_pcl_ros": "../../jsk_pcl_ros/xml/"}
-
+breath_default_project = "jsk_pcl_ros"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
