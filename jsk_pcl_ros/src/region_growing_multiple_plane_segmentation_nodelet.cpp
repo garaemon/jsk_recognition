@@ -156,7 +156,10 @@ namespace jsk_pcl_ros
       setCondifionFunctionParameter(angular_threshold_, distance_threshold_);
       cec.setConditionFunction(
         &RegionGrowingMultiplePlaneSegmentation::regionGrowingFunction);
+      //ros::Time before = ros::Time::now();
       cec.segment (*clusters);
+      // ros::Time end = ros::Time::now();
+      // ROS_INFO("segment took %f sec", (before - end).toSec());
     }
     // estimate planes
     std::vector<pcl::PointIndices::Ptr> all_inliers;
@@ -174,6 +177,29 @@ namespace jsk_pcl_ros
           = convexFromCoefficientsAndInliers<pcl::PointXYZRGB>(
             cloud, plane_inliers, plane_coefficients);
         if (convex) {
+          {
+            // check direction consistency of coefficients and convex
+            Eigen::Vector3f coefficient_normal(plane_coefficients->values[0],
+                                               plane_coefficients->values[1],
+                                               plane_coefficients->values[2]);
+            if (convex->getNormalFromVertices().dot(coefficient_normal) < 0) {
+              convex = boost::make_shared<ConvexPolygon>(convex->flipConvex());
+            }
+          }
+          // Normal should direct to origin
+          {
+            Eigen::Vector3f p = convex->getPointOnPlane();
+            Eigen::Vector3f n = convex->getNormal();
+            if (p.dot(n) > 0) {
+              convex = boost::make_shared<ConvexPolygon>(convex->flipConvex());
+              Eigen::Vector3f new_normal = convex->getNormal();
+              plane_coefficients->values[0] = new_normal[0];
+              plane_coefficients->values[1] = new_normal[1];
+              plane_coefficients->values[2] = new_normal[2];
+              plane_coefficients->values[3] = convex->getD();
+            }
+          }
+          
           geometry_msgs::PolygonStamped polygon;
           polygon.polygon = convex->toROSMsg();
           polygon.header = msg->header;
@@ -198,12 +224,6 @@ namespace jsk_pcl_ros
     pub_polygons_.publish(ros_polygon);
   }
 
-  void RegionGrowingMultiplePlaneSegmentation::updateDiagnostic(
-      diagnostic_updater::DiagnosticStatusWrapper &stat)
-  {
-
-  }
-  
   double RegionGrowingMultiplePlaneSegmentation::global_angular_threshold = 0.0;
   double RegionGrowingMultiplePlaneSegmentation::global_distance_threshold = 0.0;
   boost::mutex RegionGrowingMultiplePlaneSegmentation::global_custom_condigion_function_mutex;

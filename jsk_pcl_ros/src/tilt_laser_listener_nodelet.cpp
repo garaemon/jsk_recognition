@@ -32,9 +32,11 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
-
+#define BOOST_PARAMETER_MAX_ARITY 7
 #include "jsk_pcl_ros/tilt_laser_listener.h"
 #include <laser_assembler/AssembleScans2.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <jsk_topic_tools/time_accumulator.h>
 
 namespace jsk_pcl_ros
 {
@@ -47,17 +49,21 @@ namespace jsk_pcl_ros
   void TiltLaserListener::onInit()
   {
     DiagnosticNodelet::onInit();
-
+    skip_counter_ = 0;
     if (pnh_->hasParam("joint_name")) {
       pnh_->getParam("joint_name", joint_name_);
     }
     else {
-      NODELET_ERROR("no ~joint_state is specified");
+      JSK_NODELET_ERROR("no ~joint_state is specified");
       return;
     }
+    pnh_->getParam("twist_frame_id", twist_frame_id_);
     pnh_->param("overwrap_angle", overwrap_angle_, 0.0);
     std::string laser_type;
+    pnh_->param("clear_assembled_scans", clear_assembled_scans_, false);
+    pnh_->param("skip_number", skip_number_, 1);
     pnh_->param("laser_type", laser_type, std::string("tilt_half_down"));
+    pnh_->param("max_queue_size", max_queue_size_, 100);
     if (laser_type == "tilt_half_up") {
       laser_type_ = TILT_HALF_UP;
     }
@@ -74,16 +80,24 @@ namespace jsk_pcl_ros
       laser_type_ = INFINITE_SPINDLE_HALF;
     }
     else {
-      NODELET_ERROR("unknown ~laser_type: %s", laser_type.c_str());
+      JSK_NODELET_ERROR("unknown ~laser_type: %s", laser_type.c_str());
       return;
     }
+    pnh_->param("not_use_laser_assembler_service", not_use_laser_assembler_service_, false);
     pnh_->param("use_laser_assembler", use_laser_assembler_, false);
     if (use_laser_assembler_) {
-      assemble_cloud_srv_
-        = pnh_->serviceClient<laser_assembler::AssembleScans2>("assemble_scans2");
+      if (not_use_laser_assembler_service_) {
+        sub_cloud_
+          = pnh_->subscribe("input/cloud", max_queue_size_, &TiltLaserListener::cloudCallback, this);
+      }
+      else {
+        assemble_cloud_srv_
+          = pnh_->serviceClient<laser_assembler::AssembleScans2>("assemble_scans2");
+      }
       cloud_pub_
-        = advertise<sensor_msgs::PointCloud2>(*pnh_, "output_cloud", 1);
+        = pnh_->advertise<sensor_msgs::PointCloud2>("output_cloud", 1);
     }
+    twist_pub_ = pnh_->advertise<geometry_msgs::TwistStamped>("output_velocity", 1);
     prev_angle_ = 0;
     prev_velocity_ = 0;
     start_time_ = ros::Time::now();
@@ -91,23 +105,58 @@ namespace jsk_pcl_ros
       "clear_cache", &TiltLaserListener::clearCacheCallback,
       this);
     trigger_pub_ = advertise<jsk_recognition_msgs::TimeRange>(*pnh_, "output", 1);
-    
+    double vital_rate;
+    pnh_->param("vital_rate", vital_rate, 1.0);
+    cloud_vital_checker_.reset(
+      new jsk_topic_tools::VitalChecker(1 / vital_rate));
+    sub_ = pnh_->subscribe("input", max_queue_size_, &TiltLaserListener::jointCallback, this);
   }
 
   void TiltLaserListener::subscribe()
   {
-    sub_ = pnh_->subscribe("input", 1, &TiltLaserListener::jointCallback, this);
+    
   }
 
   void TiltLaserListener::unsubscribe()
   {
-    sub_.shutdown();
+
   }
 
   void TiltLaserListener::updateDiagnostic(
-      diagnostic_updater::DiagnosticStatusWrapper &stat)
+    diagnostic_updater::DiagnosticStatusWrapper &stat)
   {
+    boost::mutex::scoped_lock lock(cloud_mutex_);
+    if (vital_checker_->isAlive()) {
+      if (not_use_laser_assembler_service_ && 
+          use_laser_assembler_) {
+        if (cloud_vital_checker_->isAlive()) {
+          stat.summary(diagnostic_msgs::DiagnosticStatus::OK,
+                       getName() + " running");
+        }
+        else {
+          stat.summary(diagnostic_msgs::DiagnosticStatus::ERROR,
+                       "~input/cloud is not activate");
+        }
+        stat.add("scan queue", cloud_buffer_.size());
+      }
+      else {
+        stat.summary(diagnostic_msgs::DiagnosticStatus::OK,
+                     getName() + " running");
+      }
+      
+    }
+    else {
+      jsk_topic_tools::addDiagnosticErrorSummary(
+        name_, vital_checker_, stat);
+    }
+  }
 
+  void TiltLaserListener::cloudCallback(
+    const sensor_msgs::PointCloud2::ConstPtr& msg)
+  {
+    boost::mutex::scoped_lock lock(cloud_mutex_);
+    cloud_vital_checker_->poke();
+    cloud_buffer_.push_back(msg);
   }
 
   bool TiltLaserListener::clearCacheCallback(
@@ -117,6 +166,37 @@ namespace jsk_pcl_ros
     boost::mutex::scoped_lock lock(mutex_);
     buffer_.clear();
     return true;
+  }
+
+  void TiltLaserListener::getPointCloudFromLocalBuffer(
+    const std::vector<sensor_msgs::PointCloud2::ConstPtr>& target_clouds,
+    sensor_msgs::PointCloud2& output_cloud)
+  {
+    if (target_clouds.size() > 0) {
+      output_cloud.fields = target_clouds[0]->fields;
+      output_cloud.is_bigendian = target_clouds[0]->is_bigendian;
+      output_cloud.is_dense = true;
+      output_cloud.point_step = target_clouds[0]->point_step;
+      size_t point_num = 0;
+      size_t data_num = 0;
+      for (size_t i = 0; i < target_clouds.size(); i++) {
+        data_num += target_clouds[i]->row_step;
+        point_num += target_clouds[i]->width * target_clouds[i]->height;
+      }
+      output_cloud.data.reserve(data_num);
+      for (size_t i = 0; i < target_clouds.size(); i++) {
+        std::copy(target_clouds[i]->data.begin(),
+                  target_clouds[i]->data.end(),
+                  std::back_inserter(output_cloud.data));
+      }
+      output_cloud.header.frame_id = target_clouds[0]->header.frame_id;
+      output_cloud.width = point_num;
+      output_cloud.height = 1;
+      output_cloud.row_step = data_num;
+    }
+    else {
+      JSK_NODELET_WARN("target_clouds size is 0");
+    }
   }
   
   void TiltLaserListener::publishTimeRange(
@@ -129,17 +209,83 @@ namespace jsk_pcl_ros
     range.start = start;
     range.end = end;
     trigger_pub_.publish(range);
+
+    // publish velocity
+    // only publish if twist_frame_id is not empty
+    if (!twist_frame_id_.empty()) {
+      // simply compute from the latest velocity
+      if (buffer_.size() >= 2) {
+        // at least, we need two joint angles to
+        // compute velocity
+        StampedJointAngle::Ptr latest = buffer_[buffer_.size() - 1];
+        StampedJointAngle::Ptr last_second = buffer_[buffer_.size() - 2];
+        double value_diff = latest->getValue() - last_second->getValue();
+        double time_diff = (latest->header.stamp - last_second->header.stamp).toSec();
+        double velocity = value_diff / time_diff;
+        geometry_msgs::TwistStamped twist;
+        twist.header.frame_id = twist_frame_id_;
+        twist.header.stamp = latest->header.stamp;
+        if (laser_type_ == INFINITE_SPINDLE_HALF || // roll laser
+            laser_type_ == INFINITE_SPINDLE) {
+          twist.twist.angular.x = velocity;
+        }
+        else {                  // tilt laser
+          twist.twist.angular.y = velocity;
+        }
+        twist_pub_.publish(twist);
+      }
+    }
+
     if (use_laser_assembler_) {
-      laser_assembler::AssembleScans2 srv;
-      srv.request.begin = start;
-      srv.request.end = end;
-      assemble_cloud_srv_.call(srv);
-      sensor_msgs::PointCloud2 output_cloud = srv.response.cloud;
-      output_cloud.header.stamp = stamp;
-      cloud_pub_.publish(output_cloud);
+      if (skip_counter_++ % skip_number_ == 0) {
+        laser_assembler::AssembleScans2 srv;
+        srv.request.begin = start;
+        srv.request.end = end;
+        try {
+          if (!not_use_laser_assembler_service_) {
+            if (assemble_cloud_srv_.call(srv)) {
+              sensor_msgs::PointCloud2 output_cloud = srv.response.cloud;
+              output_cloud.header.stamp = stamp;
+              cloud_pub_.publish(output_cloud);
+            }
+            else {
+              JSK_NODELET_ERROR("Failed to call assemble cloud service");
+            }
+          }
+          else {
+            // Assemble cloud from local buffer
+            std::vector<sensor_msgs::PointCloud2::ConstPtr> target_clouds;
+            {
+              boost::mutex::scoped_lock lock(cloud_mutex_);
+              if (cloud_buffer_.size() == 0) {
+                return;
+              }
+              for (size_t i = 0; i < cloud_buffer_.size(); i++) {
+                ros::Time the_stamp = cloud_buffer_[i]->header.stamp;
+                if (the_stamp > start && the_stamp < end) {
+                  target_clouds.push_back(cloud_buffer_[i]);
+                }
+              }
+              if (clear_assembled_scans_) {
+                cloud_buffer_.removeBefore(end);
+              }
+              else {
+                cloud_buffer_.removeBefore(start);
+              }
+            }
+            sensor_msgs::PointCloud2 output_cloud;
+            getPointCloudFromLocalBuffer(target_clouds, output_cloud);
+            output_cloud.header.stamp = stamp;
+            cloud_pub_.publish(output_cloud);
+          }
+        }
+        catch (...) {
+          JSK_NODELET_ERROR("Exception in calling assemble cloud service");
+        }
+      }
     }
   }
-  
+
   void TiltLaserListener::processTiltHalfUp(
     const ros::Time& stamp, const double& joint_angle)
   {
@@ -183,7 +329,12 @@ namespace jsk_pcl_ros
         if (change_count == 2) {
           ros::Time start_time = buffer_[i]->header.stamp;
           publishTimeRange(stamp, start_time, stamp);
-          buffer_.removeBefore(buffer_[i-1]->header.stamp);
+          if (clear_assembled_scans_) {
+            buffer_.removeBefore(stamp);
+          }
+          else {
+            buffer_.removeBefore(buffer_[i-1]->header.stamp);
+          }
           break;
         }
         direction = current_direction;
@@ -212,23 +363,33 @@ namespace jsk_pcl_ros
       for (size_t i = buffer_.size() - 1; i > 0; i--) {
         // find jump first
         if (!jumped) {
-          double direction = buffer_[i-1]->getValue() - buffer_[i]->getValue();
+          double direction = fmod(buffer_[i-1]->getValue(), 2.0 * M_PI) - fmod(buffer_[i]->getValue(), 2.0 * M_PI);
           if (direction * velocity > 0) {
             jumped = true;
           }
         }
         else {                  // already jumped
           if (velocity > 0) {
-            if (buffer_[i-1]->getValue() < fmod(threshold - overwrap_angle_, 2.0 * M_PI)) {
+            if (fmod(buffer_[i-1]->getValue(), 2.0 * M_PI) < fmod(threshold - overwrap_angle_, 2.0 * M_PI)) {
               publishTimeRange(stamp, buffer_[i-1]->header.stamp, stamp);
-              buffer_.removeBefore(buffer_[i-1]->header.stamp);
+              if (clear_assembled_scans_) {
+                buffer_.removeBefore(stamp);
+              }
+              else {
+                buffer_.removeBefore(buffer_[i-1]->header.stamp);
+              }
               break;
             }
           }
           else if (velocity < 0) {
-            if (buffer_[i-1]->getValue() > fmod(threshold + overwrap_angle_, 2.0 * M_PI)) {
+            if (fmod(buffer_[i-1]->getValue(), 2.0 * M_PI) > fmod(threshold + overwrap_angle_, 2.0 * M_PI)) {
               publishTimeRange(stamp, buffer_[i-1]->header.stamp, stamp);
-              buffer_.removeBefore(buffer_[i-1]->header.stamp);
+              if (clear_assembled_scans_) {
+                buffer_.removeBefore(stamp);
+              }
+              else {
+                buffer_.removeBefore(buffer_[i-1]->header.stamp);
+              }
               break;
             }
           }
@@ -246,10 +407,10 @@ namespace jsk_pcl_ros
     const sensor_msgs::JointState::ConstPtr& msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
-    vital_checker_->poke();
     for (size_t i = 0; i < msg->name.size(); i++) {
       std::string name = msg->name[i];
       if (name == joint_name_) {
+        vital_checker_->poke();
         if (laser_type_ == TILT_HALF_UP) {
           processTiltHalfUp(msg->header.stamp, msg->position[i]);
         }

@@ -57,7 +57,7 @@ namespace jsk_pcl_ros
   class ICPRegistration: public jsk_topic_tools::ConnectionBasedNodelet
   {
   public:
-    typedef pcl::PointXYZRGB PointT;
+    typedef pcl::PointXYZRGBNormal PointT;
     typedef jsk_pcl_ros::ICPRegistrationConfig Config;
     typedef message_filters::sync_policies::ExactTime<
       sensor_msgs::PointCloud2,
@@ -99,6 +99,18 @@ namespace jsk_pcl_ros
       const Eigen::Affine3f& offset,
       pcl::PointCloud<PointT>::Ptr& output_cloud,
       Eigen::Affine3d& output_transform);
+    virtual double alignPointcloudWithICP(
+      pcl::PointCloud<PointT>::Ptr& cloud,
+      pcl::PointCloud<PointT>::Ptr& reference,
+      const Eigen::Affine3f& offset,
+      pcl::PointCloud<PointT>::Ptr& output_cloud,
+      Eigen::Affine3d& output_transform);
+    virtual double alignPointcloudWithNDT(
+      pcl::PointCloud<PointT>::Ptr& cloud,
+      pcl::PointCloud<PointT>::Ptr& reference,
+      const Eigen::Affine3f& offset,
+      pcl::PointCloud<PointT>::Ptr& output_cloud,
+      Eigen::Affine3d& output_transform);
     virtual jsk_recognition_msgs::ICPResult alignPointcloudWithReferences(
       pcl::PointCloud<PointT>::Ptr& cloud,
       const Eigen::Affine3f& offset,
@@ -114,6 +126,7 @@ namespace jsk_pcl_ros
       const sensor_msgs::CameraInfo::ConstPtr& msg);
     virtual void subscribe();
     virtual void unsubscribe();
+    
     ////////////////////////////////////////////////////////
     // ROS variables
     ////////////////////////////////////////////////////////
@@ -143,6 +156,13 @@ namespace jsk_pcl_ros
     boost::shared_ptr<message_filters::Synchronizer<ReferenceSyncPolicy> > sync_reference_;
     tf::TransformListener* tf_listener_;
 
+    /** @brief
+     * Store value of ~use_normal.
+     * If this parameter is true, ICPRegistration nodelet expects reference and input
+     * pointcloud have normal_x, normal_y and normal_z fields. 
+     */
+    bool use_normal_;
+    
     ////////////////////////////////////////////////////////
     // parameters for ICP
     ////////////////////////////////////////////////////////
@@ -155,6 +175,8 @@ namespace jsk_pcl_ros
     double correspondence_distance_;
     double transform_epsilon_;
     double euclidean_fittness_epsilon_;
+    double ransac_iterations_;
+    double ransac_outlier_threshold_;
     sensor_msgs::CameraInfo::ConstPtr camera_info_msg_;
     
     ////////////////////////////////////////////////////////
@@ -163,6 +185,13 @@ namespace jsk_pcl_ros
     double rotation_epsilon_;
     int correspondence_randomness_;
     int maximum_optimizer_iterations_;
+
+    ////////////////////////////////////////////////////////
+    // parameters for NDT
+    ////////////////////////////////////////////////////////
+    double ndt_resolution_;
+    double ndt_step_size_;
+    double ndt_outlier_ratio_;
   private:
     
   };

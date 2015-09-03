@@ -4,6 +4,8 @@ find_package(catkin REQUIRED
   std_msgs sensor_msgs geometry_msgs message_generation pcl_msgs)
 add_message_files(
   FILES
+  PlotData.msg
+  HeightmapConfig.msg
   SimpleOccupancyGrid.msg
   SimpleOccupancyGridArray.msg
   PolygonArray.msg
@@ -12,11 +14,15 @@ add_message_files(
   ParallelEdge.msg
   TimeRange.msg
   Rect.msg
+  RectArray.msg
   SparseOccupancyGridCell.msg
   Circle2DArray.msg
   BoundingBox.msg
   SparseOccupancyGridColumn.msg
   SparseOccupancyGrid.msg
+  Histogram.msg
+  HistogramWithRange.msg
+  HistogramWithRangeBin.msg
   ColorHistogram.msg
   DepthErrorResult.msg
   BoundingBoxArray.msg
@@ -39,6 +45,7 @@ add_message_files(
   ColorHistogramArray.msg
   Line.msg
   ICPResult.msg
+  ImageDifferenceValue.msg
   )
 
 generate_messages(
@@ -48,3 +55,6 @@ generate_messages(
 catkin_package(
   CATKIN_DEPENDS std_msgs sensor_msgs geometry_msgs pcl_msgs
 )
+
+install(DIRECTORY scripts
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

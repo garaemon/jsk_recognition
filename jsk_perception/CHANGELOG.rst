@@ -2,6 +2,167 @@
 Changelog for package jsk_perception
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.17 (2015-08-21)
+-------------------
+
+0.2.16 (2015-08-19)
+-------------------
+* [CMakeLists.txt] we can not use rospack within cmake process
+* Contributors: Kei Okada
+
+0.2.15 (2015-08-18)
+-------------------
+* Merge pull request `#1058 <https://github.com/jsk-ros-pkg/jsk_recognition/issues/1058>`_ from garaemon/uncomment-generate-template
+  Uncomment generate template
+* [jsk_perception] Add executable flag to eusmodel_template_gen.l
+* [jsk_perception] uncomment generate template
+* Contributors: JSK-PR2, Ryohei Ueda
+
+0.2.14 (2015-08-13)
+-------------------
+* [jsk_perception] pub posewithcovariancestamped
+* [jsk_perception] Add nodelet ColorizeFloatImage to colorize generic float image
+* sliding_window_object_detector : opencv3 has different API for cv::ml::SVM
+* src/virtual_camera_mono: use cv.hpp and opencv2 code for cv::getPerspectiveTransform
+* src/snake_segmentation: snake (legacy.hpp) is disabled on opencv3
+* src/point_pose_extractor: use cv.hpp
+* linemode is moved to opencv_contrib, disabled for now (only for opencv3)
+* src/calc_flow.cpp: use cv.hpp instead of cv.h
+* background_substraction: cv::BackgroundSubtractorMOG2 is abstract type for opencv3
+* CMakeLists.txt: depends on cv_bridge, not opencv (jsk_perception)
+* [jsk_perception] Update readme
+* [jsk_perception] Add simple_classifier*
+* [jsk_perception] Scripts for bof and its hist extractor
+* do not convert image encode in kmeans and gaussian_blur
+* Contributors: Kei Okada, Kentaro Wada, Ryohei Ueda, Hitoshi Kamada, Masaki Murooka
+
+0.2.13 (2015-06-11)
+-------------------
+* [jsk_perception] Use dynamic_reconfigure in ImageTimeDiff
+* [jsk_perception] Update image_time_diff to use hue/saturation
+* [jsk_perception] Add Kmeans section to README
+* [jek_perception] Add kmeans
+* [jsk_perception] Add GaussignBlur section to README
+* [jsk_perception] Add gaussian_blur
+* [jsk_perception] Update README.md for squashing dilate/erode
+* [jsk_perception] Squash erode/dilate to morphological_operator
+* [jsk_perception] Update README.md for morphological operators
+* [jsk_perception] Add advanced morphological transformations
+* [jsk_perception] Use isBGR/isRGB/isBGRA/isRGBA in ApplyMaskImage
+* [jsk_perception] Add isBGR/isRGB/isBGRA/isRGBA
+* [jsk_perception] Use header to synchronize in ImageTimeDiff
+* [jsk_perception] Update image_time_diff.py to use ImageDifferenceValue.msg
+* [jsk_perception] Update docs of image_time_diff for output
+* [jsk_perception] Publish with stamp in image_time_diff
+* [jsk_perception/image_publisher] Do not exit program even though no file is found
+* uncomment camera_info_cb
+* add subscription of image_raw
+* Updated Sliding window detector.
+  - Removed the trainer
+  - Added Bootstraper
+* [jsk_perception] Update README for #927
+* [jsk_perception] Enable apply_mask convert mask black to transparent
+* Changed from reading saved image from directory to RosBag files
+* [jsk_perception] Use jsk_topic_tools/log_utils.h for JSK_ROS_INFO,
+  JSK_NODELET_INFO and so on
+* [jsk_perception] add diff per pixel to ImageTimeDiff
+* [jsk_perception] Fix bug in apply_mask in converting BGRA/RGBA input image
+* [jsk_perception] remove no need get_param in image_publisher
+* [jsk_perception] Enable HSVDecomposer to handle BGRA/RGBA image
+* [jsk_perception] Enable ApplyMask handle BGRA/RGBA image
+* [jsk_perception] ApplyMask Mono8 encoding to publish mask
+* [jsk_perception] Add publish_info param to image_publisher
+* [jsk_perception] Add dynamic_reconfigure feature to ImagePublisher
+* [jsk_perception] Publish the difference between start and current image
+* [jsk_perception][ApplyMaskImage] mask image should be mono8
+* Node to for training the classifier for Sliding Window Object Detector
+* [jsk_perception] Ignore trained_data directory from git filesystem
+* Contributors: Kentaro Wada, Ryohei Ueda, Eisoku Kuroiwa, Krishneel Chaudhary
+
+0.2.12 (2015-05-04)
+-------------------
+* Revert "[jsk_perception/point_pose_extractor] Use OpenCV's matcher class to estimate mathcing"
+* [jsk_perception/point_pose_extractor] Use OpenCV's matcher class to
+  estimate mathcing
+* [jsk_perception/point_pose_extractor] Add license header
+* [jsk_perception] Untabify point_pose_extractor.cpp
+* [jsk_perception/point_pose_extractor] Publish PoseStamped from
+  point_pose_extractor result
+* add ROS_INFO
+* [jsk_perception] check if pcam.intrinsicMatrix is valid
+* [jsk_perception] Download drill trained data in compiling time
+* Removed opencv non-free header directive
+  Corrected the nodelet name in CMakeLists.txt
+* Corrected the nodelet name in CMakeLists.txt
+* Removed opencv non-free header directive
+* Nodelet for Edge, Contour Thinning and Nodelet for Sliding window object detector
+* [jsk_perception] add Fisheye Rotate parameter
+* add upside down option to cfg
+* add Fisheye Ray Publisher
+* [jsk_perception] Add ProjectImagePoint nodelet to project image local
+  coordinates into 3-D point
+* [jsk_perception] Update README for fisheye
+* [jsk_perception] update Fisheye To Panoarama
+* [jsk_perception] Modify typo
+* [jsk_perception] Add MaskImageGenerator
+* add scale command to shrink the output and make faster
+* add cfg
+* [jsk_perception] Add fisheye rectify
+* [jsk_perception] Add attributeError message to image_publisher.py
+* [jsk_perception] Fix README.md about erode/dilate nodelets
+* Merge pull request #834 from wkentaro/update-readme-for-pr-811
+  [jsk_perception] Update README for histogram max_value of SingleChannelHistogram
+* [jsk_perception] Update README for histogram max_value of SingleChannelHistogram
+* [jsk_perception] Update README for iterations param of Dilate/ErodeMaskImage
+* [jsk_perception] Add iteration param to DilateMaskImage & ErodeMaskImage
+* Contributors: Kamada Hitoshi, Kentaro Wada, Ryohei Ueda, Yuto Inagaki, iKrishneel
+
+0.2.11 (2015-04-13)
+-------------------
+* add encoded points rate
+* Contributors: Kamada Hitoshi
+
+0.2.10 (2015-04-09)
+-------------------
+* [jsk_perception] add Simple Fisheye to Panorama
+* [jsk_perception] changed order of dynamic reconfigure
+* [jsk_perception] default max value of histogram should be 256 to include 255 pixel
+* [jsk_perception] print number of point when encoding sparse image
+* [jsk_perception] Publish empty camera info from image_publisher.py
+* [jsk_perception] Add sample for ColorHistogramLabelMatch
+* [jsk_perception] Add documentation about ColorHistogramLabelMatch
+* Contributors: Yuki Furuta, Ryohei Ueda, Yuto Inagaki, Kamada Hitoshi, Kentaro Wada
+
+0.2.9 (2015-03-29)
+------------------
+* 0.2.8
+* Update Changelog
+* Contributors: Ryohei Ueda
+
+0.2.8 (2015-03-29)
+------------------
+
+0.2.7 (2015-03-26)
+------------------
+
+0.2.6 (2015-03-25)
+------------------
+
+0.2.5 (2015-03-17)
+------------------
+* check target cloud data ifnot invalid
+* Validate image message without image array (width == 0 and height == 0)
+* Enhance: more specific error exception
+* Change to avoid SyntaxWarning about not assigning rospy.Publisher argument queue_size
+* Change import libs with reasonable order (thirdparty -> ros)
+* Contributors: Kentaro Wada, Yu Ohara
+
+0.2.4 (2015-03-08)
+------------------
+* [jsk_perception] Add simple script to publish image file into ros image
+* Fix license: WillowGarage -> JSK Lab
+* Contributors: Ryohei Ueda
+
 0.2.3 (2015-02-02)
 ------------------
 * [jsk_pcl_ros, jsk_perception] Move mask image operation to jsk_perception

@@ -2,6 +2,67 @@
 Changelog for package jsk_recognition_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.17 (2015-08-21)
+-------------------
+* [jsk_recognition_msgs/PolygonArray] Add lebels and likelihood for
+  colorizing on rviz
+* Contributors: Ryohei Ueda
+
+0.2.16 (2015-08-19)
+-------------------
+
+0.2.15 (2015-08-18)
+-------------------
+
+0.2.14 (2015-08-13)
+-------------------
+* [jsk_recognition_msgs] Add value field to BoundingBox to represent likelihood
+* [jsk_recognition_msgs] HistogramWithRange message to represent rich histogram
+  data
+* [jsk_pcl_ros] Add config topic to chain heightmap configuration
+* [jsk_perception] Scripts for bof and its hist extractor
+* Contributors: Kentaro Wada, Ryohei Ueda
+
+0.2.13 (2015-06-11)
+-------------------
+* [jsk_perception] Use ImageDifferenceValue.msg instead of Float32Stamped.msg
+* [jsk_recognition_msgs] Add Float32Stamped.msg
+* Contributors: Kentaro Wada
+
+0.2.12 (2015-05-04)
+-------------------
+* JSK Recognition Msg for handling Array of 2D Rects
+* Contributors: iKrishneel
+
+0.2.11 (2015-04-13)
+-------------------
+
+0.2.10 (2015-04-09)
+-------------------
+
+0.2.9 (2015-03-29)
+------------------
+* 0.2.8
+* Update Changelog
+* Contributors: Ryohei Ueda
+
+0.2.8 (2015-03-29)
+------------------
+
+0.2.7 (2015-03-26)
+------------------
+
+0.2.6 (2015-03-25)
+------------------
+
+0.2.5 (2015-03-17)
+------------------
+
+0.2.4 (2015-03-08)
+------------------
+* [jsk_recognition_msgs] Add resolution to SimpleOccupancyGrid
+* Contributors: Ryohei Ueda
+
 0.2.3 (2015-02-02)
 ------------------
 * add CATKIN_DEPENDS

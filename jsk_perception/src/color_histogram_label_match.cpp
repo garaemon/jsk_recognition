@@ -48,6 +48,7 @@ namespace jsk_perception
       boost::bind (
         &ColorHistogramLabelMatch::configCallback, this, _1, _2);
     srv_->setCallback (f);
+    pnh_->param("use_mask", use_mask_, false);
     pub_debug_ = advertise<sensor_msgs::Image>(
       *pnh_, "debug", 1);
     pub_coefficient_image_ = advertise<sensor_msgs::Image>(
@@ -60,12 +61,21 @@ namespace jsk_perception
   {
     sub_image_.subscribe(*pnh_, "input", 1);
     sub_label_.subscribe(*pnh_, "input/label", 1);
-    sub_mask_.subscribe(*pnh_, "input/mask", 1);
-    sync_ = boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(100);
-    sync_->connectInput(sub_image_, sub_label_, sub_mask_);
-    sync_->registerCallback(
-      boost::bind(
-        &ColorHistogramLabelMatch::match, this, _1, _2, _3));
+    if (use_mask_) {
+      sync_ = boost::make_shared<message_filters::Synchronizer<SyncPolicy> >(100);
+      sub_mask_.subscribe(*pnh_, "input/mask", 1);
+      sync_->connectInput(sub_image_, sub_label_, sub_mask_);
+      sync_->registerCallback(
+        boost::bind(
+          &ColorHistogramLabelMatch::match, this, _1, _2, _3));
+    }
+    else {
+      sync_wo_mask_ = boost::make_shared<message_filters::Synchronizer<SyncPolicyWithoutMask> >(100);
+      sync_wo_mask_->connectInput(sub_image_, sub_label_);
+      sync_wo_mask_->registerCallback(
+        boost::bind(
+          &ColorHistogramLabelMatch::match, this, _1, _2));
+    }
     sub_histogram_ = pnh_->subscribe(
       "input/histogram", 1, &ColorHistogramLabelMatch::histogramCallback, this);
   }
@@ -74,7 +84,9 @@ namespace jsk_perception
   {
     sub_image_.unsubscribe();
     sub_label_.unsubscribe();
-    sub_mask_.unsubscribe();
+    if (use_mask_) {
+      sub_mask_.unsubscribe();
+    }
     sub_histogram_.shutdown();
   }
 
@@ -132,12 +144,26 @@ namespace jsk_perception
   
   void ColorHistogramLabelMatch::match(
     const sensor_msgs::Image::ConstPtr& image_msg,
+    const sensor_msgs::Image::ConstPtr& label_msg)
+  {
+    cv::Mat whole_mask = cv::Mat(image_msg->height,
+                                 image_msg->width, CV_8UC1, cv::Scalar(255));
+    sensor_msgs::Image::ConstPtr mask_msg
+      = cv_bridge::CvImage(image_msg->header,
+                           sensor_msgs::image_encodings::MONO8,
+                           whole_mask).toImageMsg();
+    match(image_msg, label_msg, mask_msg);
+  }
+
+
+  void ColorHistogramLabelMatch::match(
+    const sensor_msgs::Image::ConstPtr& image_msg,
     const sensor_msgs::Image::ConstPtr& label_msg,
     const sensor_msgs::Image::ConstPtr& mask_msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
     if (histogram_.empty()) {
-      NODELET_DEBUG("no reference histogram is available");
+      JSK_NODELET_DEBUG("no reference histogram is available");
       return;
     }
     
@@ -147,6 +173,7 @@ namespace jsk_perception
       = cv_bridge::toCvShare(label_msg, label_msg->encoding)->image;
     cv::Mat whole_mask
       = cv_bridge::toCvShare(mask_msg, mask_msg->encoding)->image;
+    
     cv::Mat coefficient_image = cv::Mat::zeros(
       image_msg->height, image_msg->width, CV_32FC1);
     std::vector<int> labels;
@@ -204,7 +231,7 @@ namespace jsk_perception
         }
       }
     }
-    NODELET_INFO("coef: %f - %f", min_coef, max_coef);
+    JSK_NODELET_INFO("coef: %f - %f", min_coef, max_coef);
     pub_debug_.publish(
       cv_bridge::CvImage(image_msg->header,
                          sensor_msgs::image_encodings::BGR8,
@@ -272,7 +299,7 @@ namespace jsk_perception
     else if (coefficient_method_ == 4 || coefficient_method_ == 5) {
       cv::Mat ref_sig = cv::Mat::zeros(ref_hist.cols, 2, CV_32FC1);
       cv::Mat target_sig = cv::Mat::zeros(ref_hist.cols, 2, CV_32FC1);
-      //NODELET_INFO("ref_hist.cols = %d", ref_hist.cols);
+      //JSK_NODELET_INFO("ref_hist.cols = %d", ref_hist.cols);
       for (size_t i = 0; i < ref_hist.cols; i++) {
         ref_sig.at<float>(i, 0) = ref_hist.at<float>(0, i);
         target_sig.at<float>(i, 0) = target_hist.at<float>(0, i);
@@ -289,7 +316,7 @@ namespace jsk_perception
       }
     }
     else {
-      NODELET_ERROR("unknown coefficiet method: %d", coefficient_method_);
+      JSK_NODELET_ERROR("unknown coefficiet method: %d", coefficient_method_);
       return 0;
     }
   }

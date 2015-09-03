@@ -45,13 +45,14 @@
 #include <jsk_topic_tools/rosparam_utils.h>
 #include "jsk_pcl_ros/pcl_util.h"
 #include <algorithm>
-
+#include <set>
 namespace jsk_pcl_ros
 {
   void AttentionClipper::onInit()
   {
     DiagnosticNodelet::onInit();
     tf_listener_ = TfListenerSingleton::getInstance();
+    pnh_->param("negative", negative_, false);
     pnh_->param("use_multiple_attention", use_multiple_attention_, false);
     if (!use_multiple_attention_) {
       Eigen::Affine3f pose = Eigen::Affine3f::Identity();
@@ -64,7 +65,7 @@ namespace jsk_pcl_ros
                                               initial_pos[1],
                                               initial_pos[2]);
       }
-    
+
       std::vector<double> initial_rot;
       if (jsk_topic_tools::readVectorParameter(*pnh_,
                                                "initial_rot",
@@ -78,7 +79,7 @@ namespace jsk_pcl_ros
           * Eigen::AngleAxisf(initial_rot[2],
                               Eigen::Vector3f::UnitZ());
       }
-    
+
       // parameter
       // backward compatibility
       double dimension_x, dimension_y, dimension_z;
@@ -104,11 +105,12 @@ namespace jsk_pcl_ros
       jsk_topic_tools::readVectorParameter(*pnh_, "initial_rot_list",
                                            initial_rot_list);
       jsk_topic_tools::readVectorParameter(*pnh_, "dimensions", dimensions);
+      jsk_topic_tools::readVectorParameter(*pnh_, "prefixes", prefixes_);
       if (initial_pos_list.size() != 0) {
         initializePoseList(initial_pos_list.size());
         for (size_t i = 0; i < initial_pos_list.size(); i++) {
           if (initial_pos_list[i].size() != 3) {
-            NODELET_FATAL("element of ~initial_pos_list should be [x, y, z]");
+            JSK_NODELET_FATAL("element of ~initial_pos_list should be [x, y, z]");
             return;
           }
           pose_list_[i].translation() = Eigen::Vector3f(initial_pos_list[i][0],
@@ -122,7 +124,7 @@ namespace jsk_pcl_ros
         // error check
         if (initial_pos_list.size() != 0 &&
             initial_rot_list.size() != initial_pos_list.size()) {
-          NODELET_FATAL(
+          JSK_NODELET_FATAL(
             "the size of ~initial_pos_list and ~initial_rot_list are different");
           return;
         }
@@ -131,7 +133,7 @@ namespace jsk_pcl_ros
         }
         for (size_t i = 0; i < initial_rot_list.size(); i++) {
           if (initial_rot_list[i].size() != 3) {
-            NODELET_FATAL("element of ~initial_rot_list should be [rx, ry, rz]");
+            JSK_NODELET_FATAL("element of ~initial_rot_list should be [rx, ry, rz]");
             return;
           }
           pose_list_[i] = pose_list_[i]
@@ -149,7 +151,7 @@ namespace jsk_pcl_ros
         // error check
         if (pose_list_.size() != 0 &&
             pose_list_.size() != dimensions.size()) {
-          NODELET_FATAL(
+          JSK_NODELET_FATAL(
             "the size of ~dimensions and ~initial_pos_list or ~initial_rot_list are different");
           return;
         }
@@ -162,6 +164,21 @@ namespace jsk_pcl_ros
                                                 dimensions[i][2]));
         }
       }
+
+      // ~prefixes
+      //   -> [left_hand, right_hand ...]
+      if (prefixes_.size() != 0) {
+        // error check
+        if (prefixes_.size() != dimensions.size()) {
+          JSK_NODELET_FATAL(
+            "the size of ~prefixes and ~dimensions are different");
+          return;
+        }
+        for(int i = 0; i < prefixes_.size(); i++){
+          multiple_pub_indices_.push_back(advertise<PCLIndicesMsg>(*pnh_, prefixes_[i]+std::string("/point_indices"), 1));
+        }
+      }
+
       jsk_topic_tools::readVectorParameter(*pnh_, "frame_id_list", frame_id_list_);
     }
     pub_camera_info_ = advertise<sensor_msgs::CameraInfo>(*pnh_, "output", 1);
@@ -169,6 +186,7 @@ namespace jsk_pcl_ros
       = advertise<jsk_recognition_msgs::BoundingBoxArray>(*pnh_, "output/box_array", 1);
     pub_mask_ = advertise<sensor_msgs::Image>(*pnh_, "output/mask", 1);
     pub_indices_ = advertise<PCLIndicesMsg>(*pnh_, "output/point_indices", 1);
+    pub_cluster_indices_ = advertise<jsk_recognition_msgs::ClusterPointIndices>(*pnh_, "output/cluster_point_indices", 1);
   }
 
   void AttentionClipper::initializePoseList(size_t num)
@@ -178,7 +196,7 @@ namespace jsk_pcl_ros
       pose_list_[i].setIdentity();
     }
   }
-  
+
   void AttentionClipper::subscribe()
   {
     sub_ = pnh_->subscribe("input", 1, &AttentionClipper::clip, this);
@@ -205,7 +223,7 @@ namespace jsk_pcl_ros
     sub_pose_.shutdown();
     sub_box_.shutdown();
   }
-  
+
   Vertices AttentionClipper::cubeVertices(Eigen::Vector3f& dimension)
   {
     Vertices nonoffsetted_vertices;
@@ -242,8 +260,8 @@ namespace jsk_pcl_ros
   {
     boost::mutex::scoped_lock lock(mutex_);
     dimensions_[0][0] = box->dimensions.x;
-    dimensions_[0][1] = box->dimensions.x;
-    dimensions_[0][2] = box->dimensions.x;
+    dimensions_[0][1] = box->dimensions.y;
+    dimensions_[0][2] = box->dimensions.z;
     frame_id_list_[0] = box->header.frame_id;
     tf::poseMsgToEigen(box->pose, pose_list_[0]);
   }
@@ -295,7 +313,7 @@ namespace jsk_pcl_ros
     }
     pub_bounding_box_array_.publish(box_array);
   }
-  
+
   void AttentionClipper::computeROI(
     const sensor_msgs::CameraInfo::ConstPtr& msg,
     std::vector<cv::Point2d>& points,
@@ -317,7 +335,7 @@ namespace jsk_pcl_ros
       if (uv.x > msg->width) {
         uv.x = msg->width;
       }
-      
+
       if (uv.y > msg->height) {
         uv.y = msg->height;
       }
@@ -330,7 +348,7 @@ namespace jsk_pcl_ros
       if (min_v > uv.y) {
         min_v = uv.y;
       }
-      
+
       if (max_v < uv.y) {
         max_v = uv.y;
       }
@@ -358,55 +376,102 @@ namespace jsk_pcl_ros
     const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
+    JSK_NODELET_DEBUG("clipPointcloud");
     vital_checker_->poke();
     try {
       // 1. transform pointcloud
       // 2. crop by boundingbox
       // 3. publish indices
       pcl::PointIndices::Ptr all_indices (new pcl::PointIndices);
+      jsk_recognition_msgs::ClusterPointIndices cluster_indices_msg;
+      std::map<std::string, tf::StampedTransform> transforms;
       for (size_t i = 0; i < pose_list_.size(); i++) {
-        sensor_msgs::PointCloud2 transformed_cloud;
         std::string frame_id = frame_id_list_[i];
-        if (pcl_ros::transformPointCloud(frame_id, *msg, transformed_cloud,
-                                         *tf_listener_)) {
-          pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-          pcl::fromROSMsg(transformed_cloud, *cloud);
-          pcl::CropBox<pcl::PointXYZ> crop_box(false);
-          pcl::PointIndices::Ptr indices (new pcl::PointIndices);
-          Eigen::Vector4f max_points(dimensions_[i][0]/2,
-                                     dimensions_[i][1]/2,
-                                     dimensions_[i][2]/2,
-                                     0);
-          Eigen::Vector4f min_points(-dimensions_[i][0]/2,
-                                     -dimensions_[i][1]/2,
-                                     -dimensions_[i][2]/2,
-                                     0);
-        
-          float roll, pitch, yaw;
-          pcl::getEulerAngles(pose_list_[i], roll, pitch, yaw);
-          crop_box.setInputCloud(cloud);
-          crop_box.setMax(max_points);
-          crop_box.setMin(min_points);
-          crop_box.setTranslation(pose_list_[i].translation());
-          crop_box.setRotation(Eigen::Vector3f(roll, pitch, yaw));
-          crop_box.filter(indices->indices);
-          all_indices = addIndices(*all_indices, *indices);
+        // check transform cache
+        if (transforms.find(frame_id) == transforms.end()) {
+          tf::StampedTransform new_transform = lookupTransformWithDuration(
+            tf_listener_,
+            frame_id, msg->header.frame_id,
+            msg->header.stamp,
+            ros::Duration(1.0));
+          transforms[frame_id] = new_transform;
         }
+        tf::StampedTransform tf_transform = transforms[frame_id];
+        Eigen::Affine3f transform;
+        tf::transformTFToEigen(tf_transform, transform);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr
+          cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr
+          input_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::fromROSMsg(*msg, *input_cloud);
+        pcl::transformPointCloud(*input_cloud, *cloud, transform);
+        pcl::CropBox<pcl::PointXYZ> crop_box(false);
+        pcl::PointIndices::Ptr indices (new pcl::PointIndices);
+        JSK_NODELET_DEBUG("max_points: [%f, %f, %f]", dimensions_[i][0]/2,
+                      dimensions_[i][1]/2,
+                      dimensions_[i][2]/2);
+        JSK_NODELET_DEBUG("min_points: [%f, %f, %f]",
+                      -dimensions_[i][0]/2,
+                      -dimensions_[i][1]/2,
+                      -dimensions_[i][2]/2);
+        Eigen::Vector4f max_points(dimensions_[i][0]/2,
+                                   dimensions_[i][1]/2,
+                                   dimensions_[i][2]/2,
+                                   0);
+        Eigen::Vector4f min_points(-dimensions_[i][0]/2,
+                                   -dimensions_[i][1]/2,
+                                   -dimensions_[i][2]/2,
+                                   0);
+        float roll, pitch, yaw;
+        pcl::getEulerAngles(pose_list_[i], roll, pitch, yaw);
+        crop_box.setInputCloud(cloud);
+        crop_box.setMax(max_points);
+        crop_box.setMin(min_points);
+        crop_box.setTranslation(pose_list_[i].translation());
+        crop_box.setRotation(Eigen::Vector3f(roll, pitch, yaw));
+        crop_box.filter(indices->indices);
+        // indices->indices may include NaN and inf points
+        // https://github.com/jsk-ros-pkg/jsk_recognition/issues/888
+        pcl::PointIndices non_nan_indices;
+        for (size_t j = 0; j < indices->indices.size(); j++) {
+          pcl::PointXYZ p = cloud->points[indices->indices[j]];
+          if (pcl_isfinite(p.x) && pcl_isfinite(p.y) && pcl_isfinite(p.z)) {
+            non_nan_indices.indices.push_back(indices->indices[j]);
+          }
+        }
+        PCLIndicesMsg indices_msg;
+        pcl_conversions::fromPCL(non_nan_indices, indices_msg);
+        cluster_indices_msg.cluster_indices.push_back(indices_msg);
+        if(prefixes_.size()){
+          indices_msg.header = msg->header;
+          multiple_pub_indices_[i].publish(indices_msg);
+        }
+
+        all_indices = addIndices(*all_indices, non_nan_indices);
+      }
+      if (negative_) {
+        // Publish indices which is NOT inside of box.
+        pcl::PointIndices::Ptr tmp_indices (new pcl::PointIndices);
+        std::set<int> positive_indices(all_indices->indices.begin(), all_indices->indices.end());
+        for (size_t i = 0; i < msg->width * msg->height; i++) {
+          if (positive_indices.find(i) == positive_indices.end()) {
+            tmp_indices->indices.push_back(i);
+          }
+        }
+        all_indices = tmp_indices;
       }
       PCLIndicesMsg indices_msg;
       pcl_conversions::fromPCL(*all_indices, indices_msg);
-      indices_msg.header = msg->header;
+      cluster_indices_msg.header = indices_msg.header = msg->header;
       pub_indices_.publish(indices_msg);
+      pub_cluster_indices_.publish(cluster_indices_msg);
       publishBoundingBox(msg->header);
     }
-    catch (tf2::ConnectivityException &e) {
-      NODELET_ERROR("Transform error: %s", e.what());
-    }
-    catch (tf2::InvalidArgumentException &e) {
-      NODELET_ERROR("Transform error: %s", e.what());
-    }
+    catch (std::runtime_error &e) {
+      NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
+    } 
   }
-  
+
   void AttentionClipper::clip(const sensor_msgs::CameraInfo::ConstPtr& msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
@@ -417,7 +482,7 @@ namespace jsk_pcl_ros
       cv::Mat all_mask_image = cv::Mat::zeros(msg->height, msg->width, CV_8UC1);
       bool model_success_p = model.fromCameraInfo(msg);
       if (!model_success_p) {
-        ROS_ERROR("failed to create camera model");
+        JSK_ROS_ERROR("failed to create camera model");
         return;
       }
       for (size_t i = 0; i < pose_list_.size(); i++) {
@@ -459,14 +524,11 @@ namespace jsk_pcl_ros
       pub_mask_.publish(mask_bridge.toImageMsg());
       publishBoundingBox(msg->header);
     }
-    catch (tf2::ConnectivityException &e) {
-      NODELET_ERROR("Transform error: %s", e.what());
-    }
-    catch (tf2::InvalidArgumentException &e) {
-      NODELET_ERROR("Transform error: %s", e.what());
-    }
+    catch (std::runtime_error &e) {
+      NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
+    } 
   }
-  
+
   void AttentionClipper::updateDiagnostic(
     diagnostic_updater::DiagnosticStatusWrapper &stat)
   {
@@ -479,7 +541,7 @@ namespace jsk_pcl_ros
         "AttentionClipper", vital_checker_, stat);
     }
   }
-  
+
 }
 
 #include <pluginlib/class_list_macros.h>

@@ -43,6 +43,10 @@
 #include <jsk_recognition_msgs/Torus.h>
 #include <jsk_pcl_ros/TorusFinderConfig.h>
 #include <dynamic_reconfigure/server.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <Eigen/Core>
+#include <geometry_msgs/PolygonStamped.h>
+
 namespace jsk_pcl_ros
 {
   class TorusFinder: public jsk_topic_tools::DiagnosticNodelet
@@ -55,6 +59,7 @@ namespace jsk_pcl_ros
     virtual void subscribe();
     virtual void unsubscribe();
     virtual void segment(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg);
+    virtual void segmentFromPoints(const geometry_msgs::PolygonStamped::ConstPtr& polygon_msg);
     virtual void configCallback(Config &config, uint32_t level);
     
     ////////////////////////////////////////////////////////
@@ -62,22 +67,30 @@ namespace jsk_pcl_ros
     ////////////////////////////////////////////////////////
     boost::shared_ptr <dynamic_reconfigure::Server<Config> > srv_;
     ros::Subscriber sub_;
+    ros::Subscriber sub_points_;
     ros::Publisher pub_torus_;
     ros::Publisher pub_torus_array_;
     ros::Publisher pub_inliers_;
     ros::Publisher pub_coefficients_;
+    ros::Publisher pub_pose_stamped_;
     boost::mutex mutex_;
+    Eigen::Vector3f hint_axis_;
 
     ////////////////////////////////////////////////////////
     // Parameters
     ////////////////////////////////////////////////////////
+    std::string algorithm_;
     double min_radius_;
     double max_radius_;
     double outlier_threshold_;
+    double eps_hint_angle_;
+    bool use_hint_;
+    bool use_normal_;
     int max_iterations_;
     int min_size_;
+    bool voxel_grid_sampling_;
+    double voxel_size_;
   private:
-    
   };
 }
 

@@ -38,9 +38,9 @@
 #include <ros/ros.h>
 #include <ros/names.h>
 #include <pcl_ros/pcl_nodelet.h>
-
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include "jsk_recognition_msgs/ClusterPointIndices.h"
 #include "sensor_msgs/PointCloud2.h"
@@ -52,6 +52,7 @@
 #include "jsk_pcl_ros/pcl_conversion_util.h"
 #include <jsk_topic_tools/vital_checker.h>
 #include <jsk_topic_tools/diagnostic_nodelet.h>
+#include "jsk_pcl_ros/tf_listener_singleton.h"
 
 namespace jsk_pcl_ros
 {
@@ -68,6 +69,15 @@ namespace jsk_pcl_ros
       sensor_msgs::PointCloud2,
       jsk_recognition_msgs::ModelCoefficientsArray,
       jsk_recognition_msgs::PolygonArray> SyncWithoutIndicesPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      jsk_recognition_msgs::ClusterPointIndices,
+      jsk_recognition_msgs::ModelCoefficientsArray,
+      jsk_recognition_msgs::PolygonArray> ASyncPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      jsk_recognition_msgs::ModelCoefficientsArray,
+      jsk_recognition_msgs::PolygonArray> ASyncWithoutIndicesPolicy;
     typedef jsk_pcl_ros::MultiPlaneExtractionConfig Config;
 
     MultiPlaneExtraction(): DiagnosticNodelet("MultiPlaneExtraction") { }
@@ -104,8 +114,10 @@ namespace jsk_pcl_ros
     message_filters::Subscriber<jsk_recognition_msgs::ModelCoefficientsArray> sub_coefficients_;
     message_filters::Subscriber<jsk_recognition_msgs::PolygonArray> sub_polygons_;
     message_filters::Subscriber<jsk_recognition_msgs::ClusterPointIndices> sub_indices_;
-    boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> >sync_;
+    boost::shared_ptr<message_filters::Synchronizer<SyncPolicy> > sync_;
     boost::shared_ptr<message_filters::Synchronizer<SyncWithoutIndicesPolicy> > sync_wo_indices_;
+    boost::shared_ptr<message_filters::Synchronizer<ASyncPolicy> > async_;
+    boost::shared_ptr<message_filters::Synchronizer<ASyncWithoutIndicesPolicy> > async_wo_indices_;
 
     ////////////////////////////////////////////////////////
     // Diagnostics Variables
@@ -115,10 +127,14 @@ namespace jsk_pcl_ros
     ////////////////////////////////////////////////////////
     // Parameters
     ////////////////////////////////////////////////////////
+    tf::TransformListener* tf_listener_;
+    bool use_async_;
     int maximum_queue_size_;
     double min_height_, max_height_;
     bool use_indices_;
     double maginify_;
+    bool use_sensor_frame_;
+    std::string sensor_frame_;
   private:
     
     

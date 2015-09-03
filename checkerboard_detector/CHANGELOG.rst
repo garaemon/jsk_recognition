@@ -2,6 +2,66 @@
 Changelog for package checkerboard_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.17 (2015-08-21)
+-------------------
+
+0.2.16 (2015-08-19)
+-------------------
+
+0.2.15 (2015-08-18)
+-------------------
+
+0.2.14 (2015-08-13)
+-------------------
+* CMakeLists.txt: depends on cv_bridge, not opencv checkerboard_detector
+* src/checkerboard_calibration.cpp: use cv.hpp instead of cv.h
+* Contributors: Kei Okada
+
+0.2.13 (2015-06-11)
+-------------------
+* [checkerboard_detector] Add message_throttle parameter
+* [checkerboard_detector] Description in package.xml valid html.
+* Contributors: Isaac IY Saito, Ryohei Ueda
+
+0.2.12 (2015-05-04)
+-------------------
+
+0.2.11 (2015-04-13)
+-------------------
+
+0.2.10 (2015-04-09)
+-------------------
+* [checkerboard_detector/capture.launch] remove bags in launch
+* Contributors: Yu Ohara
+
+0.2.9 (2015-03-29)
+------------------
+* 0.2.8
+* Update Changelog
+* Contributors: Ryohei Ueda
+
+0.2.8 (2015-03-29)
+------------------
+
+0.2.7 (2015-03-26)
+------------------
+
+0.2.6 (2015-03-25)
+------------------
+* [checkerboard_detector] Fill D of camera parameter by zero if ~use_P is true
+* Contributors: Ryohei Ueda
+
+0.2.5 (2015-03-17)
+------------------
+* [checkerboard_detector] add ~use_P to use P instead of K as intrinsic
+  parameter for illegal camera info such as multisense
+* Contributors: Ryohei Ueda
+
+0.2.4 (2015-03-08)
+------------------
+* Fix license: WillowGarage -> JSK Lab
+* Contributors: Ryohei Ueda
+
 0.2.3 (2015-02-02)
 ------------------
 * Remove rosbuild files

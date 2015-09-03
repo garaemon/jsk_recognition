@@ -85,7 +85,8 @@ public:
     ros::Publisher _pubCornerPoint;
     ros::Publisher _pubPolygonArray;
     ros::ServiceServer _srvDetect;
-
+    int message_throttle_;
+    int message_throttle_counter_;
     string frame_id; // tf frame id
     bool invert_color;
     int display, verbose, maxboard;
@@ -96,6 +97,7 @@ public:
     boost::mutex mutexcalib;
     ros::NodeHandle _node;
     int dimx, dimy;
+    bool use_P;
     double fRectSize[2];
 
     //////////////////////////////////////////////////////////////////////////////
@@ -106,6 +108,8 @@ public:
         _node.param("verbose", verbose, 1);
         _node.param("maxboard", maxboard, -1);
         _node.param("invert_color", invert_color, false);
+        _node.param("use_P", use_P, false);
+        _node.param("message_throttle", message_throttle_, 1);
         char str[32];
         int index = 0;
 
@@ -294,15 +298,19 @@ public:
     {
         ROS_WARN("The topic Image has been deprecated.  Please change your launch file to use image instead.");
         boost::mutex::scoped_lock lock(this->mutexcalib);
-        if( Detect(_objdetmsg,*msg,this->_camInfoMsg) ) {
-            if (_objdetmsg.objects.size() > 0) {
-                geometry_msgs::PoseStamped pose;
-                pose.header = _objdetmsg.header;
-                pose.pose = _objdetmsg.objects[0].pose;
-                _pubPoseStamped.publish(pose);
+        ++message_throttle_counter_;
+        if (message_throttle_counter_ % message_throttle_ == 0) {
+            message_throttle_counter_ = 0;
+            if( Detect(_objdetmsg,*msg,this->_camInfoMsg) ) {
+                if (_objdetmsg.objects.size() > 0) {
+                    geometry_msgs::PoseStamped pose;
+                    pose.header = _objdetmsg.header;
+                    pose.pose = _objdetmsg.objects[0].pose;
+                    _pubPoseStamped.publish(pose);
+                }
+                _pubDetection.publish(_objdetmsg);
+                publishPolygonArray(_objdetmsg);
             }
-            _pubDetection.publish(_objdetmsg);
-            publishPolygonArray(_objdetmsg);
         }
     }
 
@@ -311,15 +319,19 @@ public:
     void image_cb(const sensor_msgs::ImageConstPtr &msg)
     {
         boost::mutex::scoped_lock lock(this->mutexcalib);
-        if( Detect(_objdetmsg,*msg,this->_camInfoMsg) ) {
-            if (_objdetmsg.objects.size() > 0) {
-                geometry_msgs::PoseStamped pose;
-                pose.header = _objdetmsg.header;
-                pose.pose = _objdetmsg.objects[0].pose;
-                _pubPoseStamped.publish(pose);
+        ++message_throttle_counter_;
+        if (message_throttle_counter_ % message_throttle_ == 0) {
+            message_throttle_counter_ = 0;
+            if( Detect(_objdetmsg,*msg,this->_camInfoMsg) ) {
+                if (_objdetmsg.objects.size() > 0) {
+                    geometry_msgs::PoseStamped pose;
+                    pose.header = _objdetmsg.header;
+                    pose.pose = _objdetmsg.objects[0].pose;
+                    _pubPoseStamped.publish(pose);
+                }
+                _pubDetection.publish(_objdetmsg);
+                publishPolygonArray(_objdetmsg);
             }
-            _pubDetection.publish(_objdetmsg);
-            publishPolygonArray(_objdetmsg);
         }
     }
 
@@ -375,16 +387,21 @@ public:
             cam_info.distortion_model = "plumb_bob";
             cam_info.D.resize(5, 0);
         }
+        if (use_P) {
+            for (size_t i = 0; i < cam_info.D.size(); i++) {
+                cam_info.D[i] = 0.0;
+            }
+        }
         // check all the value of R is zero or not
         // if zero, normalzie it
-        if (std::equal(cam_info.R.begin() + 1, cam_info.R.end(), cam_info.R.begin())) {
+        if (use_P || std::equal(cam_info.R.begin() + 1, cam_info.R.end(), cam_info.R.begin())) {
             cam_info.R[0] = 1.0;
             cam_info.R[4] = 1.0;
             cam_info.R[8] = 1.0;
         }
         // check all the value of K is zero or not
         // if zero, copy all the value from P
-        if (std::equal(cam_info.K.begin() + 1, cam_info.K.end(), cam_info.K.begin())) {
+        if (use_P || std::equal(cam_info.K.begin() + 1, cam_info.K.end(), cam_info.K.begin())) {
             cam_info.K[0] = cam_info.P[0];
             cam_info.K[1] = cam_info.P[1];
             cam_info.K[2] = cam_info.P[2];

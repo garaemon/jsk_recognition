@@ -2,6 +2,73 @@
 Changelog for package resized_image_transport
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.17 (2015-08-21)
+-------------------
+
+0.2.16 (2015-08-19)
+-------------------
+
+0.2.15 (2015-08-18)
+-------------------
+
+0.2.14 (2015-08-13)
+-------------------
+* src/log_polar_nodelet.cpp : convert fro milimage to cvmat
+* [resized_image_transport] Initialize vital_checkers first
+* [resized_image_transport] Add diagnostic information
+* Contributors: Kei Okada, Ryohei Ueda
+
+0.2.13 (2015-06-11)
+-------------------
+* [resized_image_transport] Fix coding style of image_processing_nodelet.cpp
+* [resized_image_transport] Do not require synchronized input topics of
+  camera info and image unless ~use_camera_subscriber is true
+* [resized_image_transport] untabify source code
+* [resized_image_transport] Advertise publishers before subscribing topics
+* [resized_image_transport] Supress output from image_resizer
+* Contributors: Ryohei Ueda
+
+0.2.12 (2015-05-04)
+-------------------
+* [resized_image_transport] Fix dynamic_reconfigure name in LogPolar
+* [resized_image_transport] Pass private nodehandle to dynamic_reconfigure to set handle the name of dynamic_reconfigrue in nodelet correctly
+* [resized_image_transport] change from linear to non-linear
+* rename to NODELET info and short fix
+* [resized_image_transport] image_resizer_nodelet resize rate feedback
+* Contributors: Kamada Hitoshi, Ryohei Ueda
+
+0.2.11 (2015-04-13)
+-------------------
+
+0.2.10 (2015-04-09)
+-------------------
+
+0.2.9 (2015-03-29)
+------------------
+* 0.2.8
+* Update Changelog
+* Contributors: Ryohei Ueda
+
+0.2.8 (2015-03-29)
+------------------
+
+0.2.7 (2015-03-26)
+------------------
+
+0.2.6 (2015-03-25)
+------------------
+
+0.2.5 (2015-03-17)
+------------------
+* [resized_image_transport] Fix ordert to read rosparam and set
+  dynamic_reconfigure to use initial value of dynamic_reconfigure correctly
+* Contributors: Ryohei Ueda
+
+0.2.4 (2015-03-08)
+------------------
+* [resized_image_transport] Publish scale information
+* Contributors: Ryohei Ueda
+
 0.2.3 (2015-02-02)
 ------------------
 * Remove rosbuild files

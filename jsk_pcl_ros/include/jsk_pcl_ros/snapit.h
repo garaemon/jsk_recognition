@@ -41,6 +41,8 @@
 #include <pcl/point_types.h>
 #include <pcl_ros/pcl_nodelet.h>
 #include <jsk_recognition_msgs/PolygonArray.h>
+#include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <jsk_recognition_msgs/ModelCoefficientsArray.h>
 #include "jsk_pcl_ros/CallSnapIt.h"
 #include <tf/transform_listener.h>
@@ -49,7 +51,8 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/synchronizer.h>
-
+#include <jsk_pcl_ros/SnapFootstep.h>
+#include "jsk_pcl_ros/tf_listener_singleton.h"
 namespace jsk_pcl_ros
 {
   class SnapIt: public jsk_topic_tools::DiagnosticNodelet
@@ -67,8 +70,6 @@ namespace jsk_pcl_ros
     virtual void onInit();
     virtual void subscribe();
     virtual void unsubscribe();
-    virtual void updateDiagnostic(
-      diagnostic_updater::DiagnosticStatusWrapper &stat);
     virtual void polygonCallback(
       const jsk_recognition_msgs::PolygonArray::ConstPtr& polygon_msg,
       const jsk_recognition_msgs::ModelCoefficientsArray::ConstPtr& coefficients_msg);
@@ -76,22 +77,35 @@ namespace jsk_pcl_ros
       const geometry_msgs::PoseStamped::ConstPtr& pose_msg);
     virtual void convexAlignCallback(
       const geometry_msgs::PoseStamped::ConstPtr& pose_msg);
+    virtual void convexAlignPolygonCallback(
+      const geometry_msgs::PolygonStamped::ConstPtr& poly_msg);
     virtual std::vector<ConvexPolygon::Ptr> createConvexes(
       const std::string& frame_id, const ros::Time& stamp,
       jsk_recognition_msgs::PolygonArray::ConstPtr polygons);
+    virtual int findNearestConvex(
+      const Eigen::Vector3f& pose_point, 
+      const std::vector<ConvexPolygon::Ptr>& convexes);
     virtual geometry_msgs::PoseStamped alignPose(
       Eigen::Affine3f& pose, ConvexPolygon::Ptr convex);
+    virtual bool footstepAlignServiceCallback(
+      jsk_pcl_ros::SnapFootstep::Request& req,
+      jsk_pcl_ros::SnapFootstep::Response& res);
     ////////////////////////////////////////////////////////
     // ROS variables
     ////////////////////////////////////////////////////////
-    boost::shared_ptr<tf::TransformListener> tf_listener_;
+    tf::TransformListener* tf_listener_;
     message_filters::Subscriber<jsk_recognition_msgs::PolygonArray> sub_polygons_;
     message_filters::Subscriber<jsk_recognition_msgs::ModelCoefficientsArray> sub_coefficients_;
     boost::shared_ptr<message_filters::Synchronizer<SyncPolygonPolicy> >sync_polygon_;
     ros::Publisher polygon_aligned_pub_;
     ros::Publisher convex_aligned_pub_;
+    ros::Publisher convex_aligned_pose_array_pub_;
+    ros::Publisher convex_aligned_pose_array_marker_pub_;
     ros::Subscriber polygon_align_sub_;
     ros::Subscriber convex_align_sub_;
+    ros::Subscriber convex_align_polygon_sub_;
+    bool use_service_;
+    ros::ServiceServer align_footstep_srv_;
     jsk_recognition_msgs::PolygonArray::ConstPtr polygons_;
     boost::mutex mutex_;
     ////////////////////////////////////////////////////////

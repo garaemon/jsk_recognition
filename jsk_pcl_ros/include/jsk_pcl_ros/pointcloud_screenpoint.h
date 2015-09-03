@@ -60,32 +60,38 @@ namespace jsk_pcl_ros
 {
   class PointcloudScreenpoint : public pcl_ros::PCLNodelet
   {
-    typedef message_filters::sync_policies::ApproximateTime< sensor_msgs::PointCloud2,
-                                                             geometry_msgs::PolygonStamped > PolygonApproxSyncPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      geometry_msgs::PolygonStamped > PolygonApproxSyncPolicy;
 
-    typedef message_filters::sync_policies::ApproximateTime< sensor_msgs::PointCloud2,
-                                                             geometry_msgs::PointStamped > PointApproxSyncPolicy;
-    typedef message_filters::sync_policies::ApproximateTime< sensor_msgs::PointCloud2,
-                                                             sensor_msgs::PointCloud2 > PointCloudApproxSyncPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      geometry_msgs::PointStamped > PointApproxSyncPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<
+      sensor_msgs::PointCloud2,
+      sensor_msgs::PointCloud2 > PointCloudApproxSyncPolicy;
+
 
   private:
     message_filters::Subscriber < sensor_msgs::PointCloud2 > points_sub_;
     message_filters::Subscriber < geometry_msgs::PolygonStamped > rect_sub_;
     message_filters::Subscriber < geometry_msgs::PointStamped > point_sub_;
     message_filters::Subscriber < sensor_msgs::PointCloud2 > point_array_sub_;
+    message_filters::Subscriber < geometry_msgs::PolygonStamped > poly_sub_;
 
-    boost::shared_ptr < message_filters::Synchronizer < PolygonApproxSyncPolicy > > sync_a_polygon_;
+    boost::shared_ptr < message_filters::Synchronizer < PolygonApproxSyncPolicy > > sync_a_rect_;
     boost::shared_ptr < message_filters::Synchronizer < PointApproxSyncPolicy > > sync_a_point_;
     boost::shared_ptr < message_filters::Synchronizer < PointCloudApproxSyncPolicy > > sync_a_point_array_;
+    boost::shared_ptr < message_filters::Synchronizer < PolygonApproxSyncPolicy > > sync_a_poly_;
 
     ros::Publisher pub_points_;
     ros::Publisher pub_point_;
-
+    ros::Publisher pub_polygon_;
     ros::ServiceServer srv_;
-    pcl::PointCloud<pcl::PointXYZ> pts;
+    pcl::PointCloud<pcl::PointXYZ> pts_;
     std_msgs::Header header_;
 
-    bool use_rect, use_point, use_sync, use_point_array;
+    bool use_rect_, use_point_, use_sync_, use_point_array_, use_poly_;
     
     pcl::NormalEstimation< pcl::PointXYZ, pcl::Normal > n3d_;
 #if ( PCL_MAJOR_VERSION >= 1 && PCL_MINOR_VERSION >= 5 )
@@ -113,8 +119,11 @@ namespace jsk_pcl_ros
                                const sensor_msgs::PointCloud2ConstPtr& pt_arr_ptr);
     
     void rect_cb (const geometry_msgs::PolygonStampedConstPtr& array_ptr);
-    void callback_polygon(const sensor_msgs::PointCloud2ConstPtr& points_ptr,
-                          const geometry_msgs::PolygonStampedConstPtr& array_ptr);
+    void callback_rect(const sensor_msgs::PointCloud2ConstPtr& points_ptr,
+                       const geometry_msgs::PolygonStampedConstPtr& array_ptr);
+    void poly_cb(const geometry_msgs::PolygonStampedConstPtr& array_ptr);
+    void callback_poly(const sensor_msgs::PointCloud2ConstPtr& points_ptr,
+                       const geometry_msgs::PolygonStampedConstPtr& array_ptr);
     boost::mutex mutex_callback_;
 
     int k_;

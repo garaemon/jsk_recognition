@@ -11,9 +11,10 @@ namespace resized_image_transport
   
 
   void LogPolar::initReconfigure(){
+    reconfigure_server_ = boost::make_shared <dynamic_reconfigure::Server<LogPolarConfig> > (pnh);
     ReconfigureServer::CallbackType f
       = boost::bind(&LogPolar::config_cb, this, _1, _2);
-    reconfigure_server_.setCallback(f);
+    reconfigure_server_->setCallback(f);
   }
 
   void LogPolar::initParams(){
@@ -45,7 +46,7 @@ namespace resized_image_transport
 
   
   void LogPolar::process(const sensor_msgs::ImageConstPtr &src_img, const sensor_msgs::CameraInfoConstPtr &src_info,
-			 sensor_msgs::ImagePtr &dst_img, sensor_msgs::CameraInfo &dst_info){
+                         sensor_msgs::ImagePtr &dst_img, sensor_msgs::CameraInfo &dst_info){
     int image_width, image_height;
     if(use_camera_info_){
       image_width = src_info->width;
@@ -70,7 +71,8 @@ namespace resized_image_transport
       log_polar_flags += CV_WARP_INVERSE_MAP;
     }
     cvLogPolar( &src, dst, cvPoint2D32f(image_width/2, image_height/2), log_polar_scale_, log_polar_flags);
-    cv_img->image = dst;
+    // http://answers.opencv.org/question/23440/any-way-to-convert-iplimage-to-cvmat-in-opencv-300/
+    cv_img->image = cv::cvarrToMat(dst);
 
     dst_img = cv_img->toImageMsg();
     if(use_camera_info_){

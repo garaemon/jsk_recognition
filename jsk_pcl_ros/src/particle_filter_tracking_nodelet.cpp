@@ -32,7 +32,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-
+#include <jsk_topic_tools/log_utils.h>
 #include "jsk_pcl_ros/particle_filter_tracking.h"
 #include <pcl/tracking/impl/distance_coherence.hpp>
 #include <pcl/tracking/impl/approx_nearest_pair_point_cloud_coherence.hpp>
@@ -117,7 +117,9 @@ namespace jsk_pcl_ros
     
     //Setup coherence object for tracking
     bool enable_cache;
+    bool enable_organized;
     pnh_->param("enable_cache", enable_cache, false);
+    pnh_->param("enable_organized", enable_organized, false);
     ApproxNearestPairPointCloudCoherence<PointT>::Ptr coherence;
     if (enable_cache) {
       double cache_bin_size_x, cache_bin_size_y, cache_bin_size_z;
@@ -126,6 +128,8 @@ namespace jsk_pcl_ros
       pnh_->param("cache_size_z", cache_bin_size_z, 0.01);
       coherence.reset(new CachedApproxNearestPairPointCloudCoherence<PointT>(
                         cache_bin_size_x, cache_bin_size_y, cache_bin_size_z));
+    }else if(enable_organized){
+      coherence.reset(new OrganizedNearestPairPointCloudCoherence<PointT>());
     }
     else {
       coherence.reset(new ApproxNearestPairPointCloudCoherence<PointT>());
@@ -148,7 +152,7 @@ namespace jsk_pcl_ros
     //boost::shared_ptr<pcl::search::KdTree<PointT> > search(new pcl::search::KdTree<PointT>());
     coherence->setSearchMethod(search);
     double max_distance;
-    pnh_->param("max_distance", max_distance, 0.1);
+    pnh_->param("max_distance", max_distance, 0.01);
     coherence->setMaximumDistance(max_distance);
 
     tracker_set_cloud_coherence(coherence);
@@ -175,7 +179,11 @@ namespace jsk_pcl_ros
     else {
       sub_update_model_ = pnh_->subscribe(
         "renew_model", 1, &ParticleFilterTracking::renew_model_topic_cb,this);
+      sub_update_with_marker_model_
+        = pnh_->subscribe("renew_model_with_marker", 1, &ParticleFilterTracking::renew_model_with_marker_topic_cb, this);
     }
+
+    pnh_->param("marker_to_pointcloud_sampling_nums", marker_to_pointcloud_sampling_nums_, 10000);
     renew_model_srv_
       = pnh_->advertiseService(
         "renew_model", &ParticleFilterTracking::renew_model_cb, this);
@@ -203,7 +211,7 @@ namespace jsk_pcl_ros
     default_step_covariance_[5] = config.default_step_covariance_yaw;
     if (tracker_ || reversed_tracker_) 
     {
-      NODELET_INFO("update tracker parameter");
+      JSK_NODELET_INFO("update tracker parameter");
       tracker_set_step_noise_covariance(default_step_covariance_);
       tracker_set_iteration_num(iteration_num_);
       tracker_set_resample_likelihood_thr(resample_likelihood_thr_);
@@ -295,7 +303,7 @@ namespace jsk_pcl_ros
     if (base_frame_id_.compare("NONE") != 0) {
       tf::Transform transform_result
         = change_pointcloud_frame(new_target_cloud);
-      reference_transform_ = transform_result * reference_transform_;;      
+      reference_transform_ = transform_result * reference_transform_;;
     }
 
     if (!recieved_target_cloud->points.empty()) {
@@ -323,11 +331,11 @@ namespace jsk_pcl_ros
         tracker_reset_tracking();
       }
       track_target_set_ = true;
-      NODELET_INFO("RESET TARGET MODEL");
+      JSK_NODELET_INFO("RESET TARGET MODEL");
     }
     else {
       track_target_set_ = false;
-      NODELET_ERROR("TARGET MODEL POINTS SIZE IS 0 !! Stop TRACKING");
+      JSK_NODELET_ERROR("TARGET MODEL POINTS SIZE IS 0 !! Stop TRACKING");
     }
   } 
   
@@ -345,7 +353,7 @@ namespace jsk_pcl_ros
       //frame_id_ = base_frame_id_;
     }
     catch(tf::TransformException ex) {
-      NODELET_ERROR("%s",ex.what());
+      JSK_NODELET_ERROR("%s",ex.what());
       tfTransformation = tf::Transform(tf::Quaternion(0, 0, 0, 1));
     }
     tfTransformation = tf::Transform(tfTransformationStamped.getBasis(),
@@ -394,6 +402,30 @@ namespace jsk_pcl_ros
     frame_id_ = pc.header.frame_id;
     reset_tracking_target_model(new_target_cloud);
   }
+
+  void ParticleFilterTracking::renew_model_with_marker_topic_cb(const visualization_msgs::Marker &marker)
+  {
+    if(marker.type == visualization_msgs::Marker::TRIANGLE_LIST && !marker.points.empty()){
+      ROS_INFO("Reset Tracker Model with renew_model_with_marker_topic_cb");
+      pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
+      markerMsgToPointCloud(marker,
+                            marker_to_pointcloud_sampling_nums_,
+                            *cloud
+                            );
+
+      Eigen::Affine3f trans;
+      tf::poseMsgToEigen(marker.pose, trans);
+      pcl::transformPointCloud(*cloud, *cloud, trans);
+
+      frame_id_ = marker.header.frame_id;
+      reset_tracking_target_model(cloud);
+    }else{
+      JSK_ROS_ERROR(" Marker Models type is not TRIANGLE ");
+      JSK_ROS_ERROR("   OR   ");
+      JSK_ROS_ERROR(" Marker Points is empty ");
+    }
+  }
+
   void ParticleFilterTracking::renew_model_with_box_topic_cb(
     const sensor_msgs::PointCloud2::ConstPtr &pc_ptr,
     const jsk_recognition_msgs::BoundingBox::ConstPtr &bb_ptr)
@@ -421,7 +453,7 @@ namespace jsk_pcl_ros
     const Eigen::Affine3f& trans)
   {
     Eigen::Vector3f pos = trans.translation();
-    NODELET_INFO("trans: [%f, %f, %f]", pos[0], pos[1], pos[2]);
+    JSK_NODELET_INFO("trans: [%f, %f, %f]", pos[0], pos[1], pos[2]);
     if (reversed_) {
       reversed_tracker_->setTrans(trans);
     }

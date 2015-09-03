@@ -59,6 +59,345 @@ time end
 Represent range of time.
 
 ## nodelets
+### jsk\_pcl/PolygonArrayAreaLikelihood
+Compute likelihood based on area.
+Near polygon is, larger likelihood is.
+The likelihood is determined by `1/(1+d^2)` where `d` is difference between area and expected area.
+
+#### Subscribing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Publishing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Parameters
+* `~area` (default: `1.0`)
+
+  Expected size of area of polygon.
+
+### jsk\_pcl/PolygonArrayAngleLikelihood
+Compute likelihood based on distance.
+Near polygon is, larger likelihood is.
+The likelihood is determined by `1/(1+d^2)` where `d` is a angular difference from `~target_frame_id` to the polygon.
+
+#### Subscribing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Publishing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Parameters
+* `~target_frame_id` (required)
+
+  Frame id to compute polygon's distance from
+* `~tf_queue_size`
+
+  Queue size of tf message filter
+
+### jsk\_pcl/PolygonArrayDistanceLikelihood
+Compute likelihood based on distance.
+Near polygon is, larger likelihood is.
+The likelihood is determined by `1/(1+d^2)` where `d` is a distance from `~target_frame_id` to the polygon.
+
+#### Subscribing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Publishing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygon array.
+
+#### Parameters
+* `~target_frame_id` (required)
+
+  Frame id to compute polygon's distance from
+* `~tf_queue_size`
+
+  Queue size of tf message filter
+
+### jsk\_pcl/HeightmapConverter
+![](images/heightmap_converter.png)
+
+Convert a pointcloud(`sensor_msgs/PointCloud2`) into heightmap representation (`sensor_msgs/Image`).
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/Image`)
+
+  fields of the image is `CV_32FC1(float)` and if a pixel is not observed, it is filled by `-FLT_MAX`.
+
+* `~output/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+#### Parameters
+* `~resolution_x` (Integer, default: `400`)
+* `~resolution_y` (Integer, default: `400`)
+
+  Resolution of height map
+
+* `~min_x` (Double, default: `-2.0`)
+* `~max_x` (Double, default: `2.0`)
+* `~min_y` (Double, default: `-2.0`)
+* `~max_y` (Double, default: `2.0`)
+
+  Minimum and maximum value of heightmap dimension.
+
+### jsk\_pcl/HeightmapToPointCloud
+![](images/heightmap_to_pointcloud.png)
+
+Convert a heightmapt to poincloud.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/Image`)
+
+  Input heightmap.
+* `~input/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud.
+
+* `~output/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+### jsk\_pcl/HeightmapMorphologicalFiltering
+![](images/heightmap_morphological_filtering.png)
+
+Apply morphological fintering and average filter to fill small holes in pointcloud
+which is represented as heightmap.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/Image`)
+
+  Input heightmap. Hole should be represented as `-FLT_MAX` or `nan`.
+* `~output/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/Image`)
+
+  Output heightmap.
+
+#### Parameters
+* `~max_queue_size` (Integer, default: `10`):
+
+  Max queue size of subscription callback.
+* `~mask_size` (Integer, default: `2`):
+
+  Size of kernel operator of average filtering.
+* `~max_variance` (Double, default: `0.1`):
+
+  Allowable max variance in kernel operator
+
+### jsk\_pcl/HeightmapTimeAccumulation
+![](images/heightmap_time_accumulation.png)
+
+
+Accumulate heightmap in time series and construct a new heightmap.
+
+#### Subscription Topic
+* `~input` (`sensor_msgs/Image`)
+
+  Input new heightmap(t=k).
+* `~input/prev_pointcloud` (`sensor_msgs/PointCloud2`)
+
+  Accumulated heightmap represented in pointcloud from 0 to k-1 step.
+* `~input/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/Image`)
+
+  Accumulated heightmap.
+
+* `~output/config` (`jsk_recognition_msgs/HeightmapConfig`)
+
+  Config topic.
+
+#### Advertising Service
+* `~seset` (`std_srvs/Empty`)
+
+  Reset heightmap cache.
+
+### jsk\_pcl/NormalEstimationOMP
+This nodelet is almost same to `pcl/NormalEstimationOMP` of `pcl_ros` package,
+but it can handle timestamp correctly.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud.
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud, point type is `pcl::Normal`.
+* `~output_with_xyz` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud, point type is `pcl::XYZRGBNormal`.
+
+#### Parameters
+* `~k_search`
+
+  K search parameter for normal estimation
+* `~radius_search`
+
+  Radius search parameter for normal estimation
+
+### jsk\_pcl/PointCloudLocalization
+![](images/pointcloud_localization.png)
+
+Localize 6d pose of robot using ICP registration of pointcloud.
+It publishes tf transformation from gloabl frame to odometory frame like acml does.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud to align.
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Concatenated pointcloud.
+
+#### Parameters
+* `~tf_rate` (Double, default: `20.0`)
+
+  Frequency to publish tf transformations.
+* `~cloud_rate` (Double, default: `10.0`)
+
+  Frequency to publish `~output` topic.
+* `~leaf_size` (Double, default: `0.01`)
+
+  Resolution of voxel grid downsampling.
+* `~use_normal` (Bool, default: `false`)
+
+  Support normal.
+
+#### Using Services
+* `~icp_align` (`jsk_pcl_ros/ICPAlign`)
+
+  ICP service to align pointcloud
+
+#### Advertising Services
+* `~localize` (`std_srvs/Empty`)
+
+  Run localization
+* `~update_offset` (`jsk_pcl_ros/UpdateOffset`)
+
+  Update transformation between odom frame and global frame manuaaly.
+  Currently no tf is resolved.
+
+### jsk\_pcl/UniformSampling
+Sample pointloud in the manner of uniform sampling.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud
+
+#### Publishing Topic
+* `~output` (`pcl_msgs/PointIndices`)
+
+  Sampled indices
+
+#### Parameters
+* `~search_radius` (Double, default: `0.01`)
+
+  Sampling radius to apply uniform samplng.
+
+### jsk\_pcl/FeatureRegistration
+Align pointcloud using 3d feature. Currently only FPFH is supported.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+   Input pointcloud. The type of point is `pcl::PointNormal`.
+* `~input/feature` (`sensor_msgs/PointCloud2`)
+
+   Input feature. The type of point is `pcl::FPFHSignature33`.
+* `~input/reference/cloud` (`sensor_msgs/PointCloud2`)
+
+   Reference pointcloud. The type of point is `pcl::PointNormal`.
+* `~input/reference/feature` (`sensor_msgs/PointCloud2`)
+
+   Reference feature. The type of point is `pcl::FPFHSignature33`.
+
+#### Publishing Topic
+* `~output` (`geometry_msgs/PoseStamped`)
+
+  Transformation to align reference cloud to input cloud.
+* `~output/cloud` (`sensor_msgs/PointCloud`)
+
+  Reference pointCloud which is aligned to input cloud.
+
+#### Parameters
+* `~max_iterations` (Integer, default: `1000`)
+
+  Maximum number of iterations.
+* `~correspondence_randomness` (Integer, default: `2`)
+
+  Number of nearest features to use
+* `~similarity_threshold` (Double, default: `0.9`)
+
+  Polygonal edge length similarity threshold
+* `~max_correspondence_distance` (Double, default: `0.0075`)
+
+  inlier threshold
+* `~inlier_fraction` (Double, default: `0.25`)
+
+  inlier fraction
+
+### jsk\_pcl/GeometricConsistencyGrouping
+Estimate model position using Geometric Consisteny Grouping technique
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Scene pointcloud. The type is `pcl::PointNormal`.
+* `~input/feature` (`sensor_msgs/PointCloud2`)
+
+  Scene feature. currently SHOT352 is supported.
+
+* `~input/reference` (`sensor_msgs/PointCloud2`)
+
+  Model pointcloud. The type is `pcl::PointNormal`.
+* `~input/reference/feature` (`sensor_msgs/PointCloud2`)
+
+  Model feature. currently SHOT352 is supported.
+
+#### Publishing Topic
+* `~output` (`geometry_msgs/PoseStamped`)
+
+  Pose of recognized object
+
+#### Parameters
+* `~gc_size` (Double, default: `0.01`)
+
+  Size of cluster
+* `~gc_thresh` (Double, default: `5.0`)
+
+  Threshold of clustering
+
 ### jsk\_pcl/BorderEstimator
 ![](images/border_estimator.png)
 
@@ -122,7 +461,64 @@ Convert pointcloud into range image and detect border
 * `~max_angle_width` (Double, default: `2pi`)
   Maximum angle width of range image. Only does `laser` model use this parameter.
 
-### jsk\_pcl/HintedStickFInder
+### jsk\_pcl/PointCloudToClusterPointIndices
+Just convert pointcloud to `jsk_recognition_msgs/ClusterPointIndices`.
+This nodelet is useful to compute bounding box of pointcloud by ClusterPointIndicesDecomposer.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud
+
+#### Publishing Topic
+* `~output` (`jsk_recognition_msgs/ClusterPointIndices`)
+
+  Output cluster indices.
+
+### jsk\_pcl/HintedHandleEstimator
+![](images/hinted_handle_estimator.png)
+
+Detect a handle grasp pose from pointcloud and point as hint.
+
+#### Subscribing Topic
+* `~cloud` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud
+
+* `~point` (`geometry_msgs/PointStamped`)
+
+  3D Point (You can get from rviz "Publish Point" or image_view2)
+
+#### Publishing Topic
+* `handle_pose` (`geometry_msgs::PoseStamped`)
+
+  estimated handle pose
+
+* `handle_length` (`std_msgs::Float64`)
+
+  estimated handle length
+
+* `debug_marker` (`visualization_msgs::Marker`)
+
+  the result of calculating handle direction
+
+* `debug_marker_array` (`visualization_msg::MarkerArray`)
+
+  estimated handle visualization
+
+#### Parameters
+![](images/hinted_handle_estimator_pr2_hand.png)
+
+* `~finger_l` (Float, default: `0.03`)
+* `~finger_w` (Float, default: `0.01`)
+* `~finger_d` (Float, default: `0.02`)
+* `~arm_l` (Float, default: `0.05`)
+* `~arm_w` (Float, default: `0.1`)
+* `~arm_d` (Float, default: `0.01`)
+
+
+
+### jsk\_pcl/HintedStickFinder
 ![](images/hinted_stick_finder.png)
 
 Detect a stick from pointcloud and line in 2-D image as hiint.
@@ -195,9 +591,17 @@ Detect a stick from pointcloud and line in 2-D image as hiint.
 
   Minimum number of inliers in cylinder fitting.
 
-*`~eps_2d_angle` (Double, default: `0.1`)
+* `~eps_2d_angle` (Double, default: `0.1`)
 
   Threshold between hint line and detected stick. This evaluation is done in 2-D coordinate system.
+
+* `~not_synchronize` (Boolean, default: `False`)
+
+  Do not synchronize `~input`, `~input/camera_info` and `~input/hint/line` if this parameter is `True`.
+  `~input/camera_info` and `~input/hint/line` are stored in nodelet and latest of the messages are used for new `~input` pointcloud.
+* `~use_normal` (Boolean, default: `False`)
+
+  Do not run normal estimation inside of the nodelet and use normal fields of `~input` are used.
 
 ### jsk\_pcl/RGBColorFilter
 Filter pointcloud based on RGB range.
@@ -296,6 +700,31 @@ Extract indices of pointcloud which is masked by mask image. The pointcloud is n
 
   Indices of the points masked by `~input/mask`.
 
+
+### jsk\_pcl/MaskImageClusterFilter
+![](images/mask_image_cluster_indices_concatenator.png)
+
+Segment Clouds with mask_image and Clustering Methods(example. SuperVoxel).
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input point cloud.
+* `~target` (`jsk_recognition_msgs/ClusterPointIndices`)
+
+  Result of Some Clustering methods
+* `~input/mask` (`sensor_msgs/Image`)
+
+  Mask image.
+* `~input/camera_info` (`sensor_msgs/CameraInfo`)
+
+  Camera parameters of the image.
+
+#### Publishing Topic
+* `~output` (`pcl_msgs/PointIndices`)
+
+  Indices of the points masked with `~input/mask` and '~target'.
+
 ### jsk\_pcl/TorusFInder
 ![](images/torus_finder.png)
 
@@ -305,6 +734,9 @@ Find a torus out of pointcloud based on RANSAC with 3-D circle model.
 * `~input` (`sensor_msgs/PointCloud`)
 
   Input pointcloud. You may need to choose good candidates of pointcloud.
+* `~input/polygon` (`geometry_msgs/PolygonStampedd`)
+
+  Input polygon. You can use `geometry_msgs/PolygonStampedd` instead of `sensor_msgs/PointCloud`
 
 #### Publishing Topic
 
@@ -319,6 +751,10 @@ Find a torus out of pointcloud based on RANSAC with 3-D circle model.
 * `~output/array` (`jsk_recognition_msgs/TorusArray`)
 
   Array of torus. It will be used for visualization.
+
+* `~output/posie` (`geometry_msgs/PoseStamped`)
+
+  Publish result of detection as `geometry_msgs/PoseStamped`
 
 #### Parameters
 * `~min_radius` (Double, default: `0.1`)
@@ -357,7 +793,7 @@ Add color to pointcloud (no need to be organized) from image and camera info.
   Output colored pointcloud.
 
 ### jsk\_pcl/PlaneConcatenator
-![](image/plane_concatenator.png)
+![](images/plane_concatenator.png)
 
 Concatenate near planes and build new set of planes.
 
@@ -383,6 +819,9 @@ Concatenate near planes and build new set of planes.
 * `~connect_distance_threshold` (Double, default: `0.1`)
 
    Euclidean distance threshold to regard two planes as near.
+* `~connect_perpendicular_distance_threshold` (Double, default: `0.1`)
+
+   Distance threshold to connect two planes in perpendicular direction.
 * `~ransac_refinement_max_iteration` (Integer, default: `100`)
 
   The maximum number of iteration of RANSAC refinement.
@@ -392,6 +831,66 @@ Concatenate near planes and build new set of planes.
 * `~ransac_refinement_eps_angle` (Double, default: `0.1`)
 
   Eps angle threshold of RANSAC refinment using normal direction of the plane.
+
+### jsk\_pcl/PolygonMagnifier
+Magnify polygons by specified length.
+
+#### Subscribing Topic
+* `~input` (`jsk_recognition_msgs/PolygonArray`)
+
+  Input polygons
+
+#### Publishing Topic
+* `~output` (`jsk_recognition_msgs/PolygonArray`)
+
+  Output magnified polygons
+
+#### Parameters
+* `~magnify_distance` (Double, default: `0.2`)
+
+  Length to scale polygon
+
+### jsk\_pcl/PolygonPointsFlipper
+
+Flip `jsk_recognition_msgs/PolygonArray` to specified sensor_frame.
+
+#### Subscribing Topic
+* `~input/polygons` (`jsk_recognition_msgs/PolygonArray`)
+* `~input/coefficients` (`jsk_recognition_msgs/ModelCoefficientsArray`)
+
+  Input polygons.
+#### Publishing Topic
+* `~output/polygons` (`jsk_recognition_msgs/PolygonArray`)
+* `~output/coefficients` (`jsk_recognition_msgs/ModelCoefficientsArray`)
+
+  Output flipped polygons which look at the origin of sensor_frame.
+#### Parameter
+* `~sensor_frame` (String)
+
+   frame_id of sensor for polygons to look at.
+
+### jsk\_pcl/PolygonPointsSampler
+![](images/polygon_points_sampler.png)
+
+Sampling points with fixed grid size on polygons.
+
+#### Subscribing Topic
+* `~input/polygons` (`jsk_recognition_msgs/PolygonArray`)
+* `~input/coefficients` (`jsk_recognition_msgs/ModelCoefficientsArray`)
+  Input polygons where be sampled
+
+#### Publishing Topic
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Sampled pointcloud (`pcl::PointXYZRGBNormal`).
+* `~output_xyz` (`sensor_msgs/PointCloud2`)
+
+  Sampled pointcloud (`pcl::PointXYZ`).
+
+#### Parameters
+* `~grid_size` (Double, default: `0.01`)
+
+  Sampling grid size.
 ### jsk\_pcl/SupervoxelSegmentation
 ![](images/supervoxel_segmentation.png)
 
@@ -692,6 +1191,20 @@ organized pointcloud.
 
   Output indices converted from the mask image.
 
+### jsk\_pcl/OrganizedPointCloudToPointIndices
+A nodelet to convert organized PointCloud (`sensor_msgs::PointCloud2`) to `pcl_msgs/PointIndices` for
+organized pointcloud.
+
+#### Subscribing Topic
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input organized pointcloud.
+
+#### Publishing Topic
+* `~output` (`pcl_msgs/PointIndices`)
+
+  Output indices converted from the organized pointcloud.
+
 ### jsk\_pcl/PointIndicesToMaskImage
 #### What Is This
 ![](images/point_indices_to_mask_image.png)
@@ -715,6 +1228,42 @@ of organized pointcloud and original `sensor_msgs/Image`.
 
 
    Mask image to get `~input` indices from the origina limage.
+
+### jsk\_pcl/MaskImageToDepthConsideredMaskImage
+#### What Is This
+![](images/mask_image_to_depth_considered_mask_image.png)
+
+jsk_pcl/MaskImageToDepthConsideredMaskImage extracts directed area of mask image in the order of depth from `sensor_msgs/PointCloud2` and `sensor_msgs/Image` of mask image. Example is at jsk_pcl_ros/launch/extract_only_directed_region_of_close_mask_image.launch .
+
+#### Subscribing Topic
+
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Depth information of image. Width and height of this data must be same with ~input/image.
+
+* `~input/image` (`sensor_msgs/Image`)
+
+  Input mask image.
+
+* `~input/maskregion` (`sensor_msgs/Image`)
+
+  Input mask region.(To use interactively, use interaction_mode:grabcut_rect of image_view2.)
+
+#### Publishing Topic
+
+* `~output `(`sensor_msg/Image`)
+
+  Output mask Image.  Points at close range is extracted.
+
+#### Parameter
+
+* `~extract_num (Int, default: `500`)
+
+  Num of extract points in mask image.
+
+* `~use_mask_region (Bool, default: True)
+
+  Whether use msk region option or not. If true, only selected region of mask image is extracted.
 
 ### jsk\_pcl/AttentionClipper
 #### What Is This
@@ -783,12 +1332,17 @@ to see the object.
 * `~initial_rot_list` (Array of array of double, default: `None`)
 * `~frame_id_list` (Array of string, default: `None`)
 * `~dimensions` (Array of array of double, default: `None`)
+* `~prefixes` (Array of string, default: `None`)
 
-  Position, Rotation, frame id and Dimensions of multiple attention regions respectively.
+  Position, Rotation, frame id ,prefix and Dimensions of multiple attention regions respectively.
   `~iniital_pos_list` should follow `[[x, y, z], ...]`,
   `~initial_rot_list` should follow `[[rx, ry, rz], ...]` and
   `~dimensions` should follow `[[x, y, z], ...]`.
+  `~prefixes` `[prefix1, prefix2, ...]`. These prefixes will add to the /point_indices and advertise
   Available only if `~use_multiple_attention` is true.
+* `~negative` (Boolean, default: `False`)
+
+  Publish points which are not inside of attention regions if this parameter is true.
 ### jsk\_pcl/ROIClipper
 #### What Is This
 ![](images/attention_clipper.png)
@@ -819,7 +1373,7 @@ We expect to use jsk\_pcl/ROIClipper with jsk\_pcl/AttentionClipper to get ROI i
 
   Image of ROI.
 
-* `~output/point_indices` (`pcl_msgs/PointIndices`)
+* `~output/cloud_indices` (`pcl_msgs/PointIndices`)
 
   The indices of the pointcloud which is inside of the interest 3-D region.
 
@@ -864,6 +1418,9 @@ It can filters pointcloud based on **static** direction and direction based on i
 * `~direction` (Double Array, required):
 
    if `~use_imu` is false, the direction should be specified with this parmaeter.
+* `~queue_size` (Integer, default: `200`):
+
+   The length of input queue.
 
 ### jsk\_pcl/MultiPlaneExtraction
 ![MultiPlaneExtraction](images/multi_plane_extraction.png)
@@ -887,6 +1444,9 @@ Extract the points above the planes between `~min_height` and `~max_height`.
 * `~output_nonplane_cloud` (`sensor_msgs/PointCloud2`):
 
    Pointcloud above the planes is not between `~min_height` and `~max_height`.
+* `~output/indices` (`pcl_msgs/PointIndices`)
+
+  PointIndices of points which are between `~min_height` and `~max_height`.
 
 #### Parameters
 * `~min_height` (Double, default: `0.0`)
@@ -896,16 +1456,24 @@ Extract the points above the planes between `~min_height` and `~max_height`.
 * `~max_queue_size` (Integer, default: `100`)
 
    Queue length for subscribing topics.
-
 * `~use_indices` (Bool, default: `True`)
 
    Use indices of planar regions to filter if it's set true.
    You can disable this parameter to filter pointcloud which is not the same pointcloud
    to segment planes
-
 * `~magnify` (Double, default: `0.0`)
 
-  Magnify planes by this parameter. The unit is m.
+   Magnify planes by this parameter. The unit is m.
+* `~use_async` (Boolean, default: `False`)
+
+  Approximate sync input topics.
+* `~use_sensor_frame` (Boolean, default: `False`)
+
+  Use sensor viewpoint
+* `~sensor_frame` (String, default: `head_root`)
+
+  Specify frame_id of sensor origin.
+
 ### jsk\_pcl/RegionGrowingMultiplePlaneSegmentation
 ![jsk_pcl/RegionGrowingMultiplePlaneSegmentation](images/region_growing_multiple_plane_segmentation.png).
 
@@ -971,7 +1539,12 @@ This nodelet tracks the target pointcloud.
 
 * `~renew_model` (`sensor_msgs/PointCloud2`)
 
-  Reference pointcloud to tracke.
+  Reference pointcloud to track.
+
+* `~renew_model_with_marker` (`visualization_msgs/Marker`)
+
+  Reference marker model to track. This will convert marker model to pointcloud.
+  You need to pass the marker whose type is TRIANGLE_LIST and it should have the color.
 
 * `~renew_box` (`jsk_recognition_msgs/BoundingBox`)
 
@@ -1080,6 +1653,10 @@ This nodelet tracks the target pointcloud.
 
   Enable caching of nearest-neighbor search
 
+* `~enable_organized` (Boolean, default: `false`)
+
+  Enable using Organized nearest-neighbor search
+
 * `~cache_size_x` (Double, default: `0.01`)
 * `~cache_size_y` (Double, default: `0.01`)
 * `~cache_size_z` (Double, default: `0.01`)
@@ -1125,13 +1702,30 @@ ResizePointsPublisher resizes PointCloud generated from depth images. It keeps *
 
 ### jsk\_pcl/PointcloudScreenpoint
 #### What is this
+![](launch/images/pointcloud_screenpoint_3people.png)
+
+Use pointcloud from kinect
+
+![](launch/images/pointcloud_screenpoint_kinect.png)
+
+Use pointcloud from laser
+
+![](launch/images/pointcloud_screenpoint_laser.png)
+
+Use amplifiered pointclouds published by laser
+
+![](launch/images/pointcloud_screenpoint_disparity_laser.png)
+
+
 This is a nodelet to convert (u, v) coordinate on a image to 3-D point.
 It retrieves 3-D environment as pointcloud.
+
+[pointcloud_screenpoint_sample.launch](launch/pointcloud_screenpoint_sample.launch) is a sample launch file.
 
 #### Subscribing Topics
 * `~points` (`sensor_msgs/PointCloud2`):
 
-   Input pointcloud to represent 3-D environment it should be organized.
+   Pointcloud source to estimate 3D points that the user wantedt to specify on a 2D screen
 * `~point` (`geometry_msgs/PointStamped`):
 
    Input point to represent (u, v) image coordinate and this topic is enabled only if `~use_point` parameter is set `True`.
@@ -1145,6 +1739,9 @@ It retrieves 3-D environment as pointcloud.
    And the region should be rectangular.
    If `~use_sync` parameter is set `True`,
 
+* `~poly` (`geometry_msgs/PolygonStamped`):`
+
+  Input polygonal region in image local coordinates.
 * `~point_array` (`sensor_msgs/PointCloud2`):
 
    Input points to represent series of (u, v) image coordinate and this
@@ -1160,7 +1757,9 @@ It retrieves 3-D environment as pointcloud.
 * `~output` (`sensor_msgs/PointCloud`):
 
    The topic to be used to publish series of points as a result of screenpoint.
+* `~output_poly` (`geometry_msgs/PolygonStamped`)
 
+   Projected points of `~poly`.
 #### Advertising Servicies
 * `~screen_to_point` (`jsk_pcl_ros::TransformScreenpoint`)
 
@@ -1194,6 +1793,9 @@ geometry_msgs/Vector3 vector
 * `~use_rect` (Boolean, default: `False`):
 
    Enable `~polygon` topic.
+* `~use_poly` (Boolean, default: `False`):
+
+   Enable `~poly` topic.
 * `~use_point` (Boolean, default: `False`):
 
    Enable `~point` topic.
@@ -1218,6 +1820,9 @@ You can choose several types of tilt/spindle lasers such as tilt-laser of PR2, i
 * `~input`(`sensor_msgs/JointState`):
 
    Joint angles of laser actuator.
+* `~input/cloud`(`sensor_msgs/PointCloud2`):
+
+   Input scan pointcloud, it only used if ~not_use_laser_assembler_service and ~use_laser_assembler is true.
 
 #### Publishing Topics
 * `~output` (`jsk_recognition_msgs/TimeRange`):
@@ -1228,6 +1833,9 @@ You can choose several types of tilt/spindle lasers such as tilt-laser of PR2, i
    Assembled pointcloud according to time range
    of `~output`. this require `~assemble_scans2`
    service of [laser_assembler](http://wiki.ros.org/laser_assembler).
+* `~output_velocity` (`geometry_msgs/TwistStamped`)
+
+   Velocity of rotating laser. it is only published when `~twist_frame_id` is provided.
 
 #### Using Services
 * `~assemble_scans2` (`laser_assembler/AssembleScans2`):
@@ -1242,9 +1850,24 @@ You can choose several types of tilt/spindle lasers such as tilt-laser of PR2, i
    Clear cache and restart collecting data.
 
 #### Parameters
+* `~max_queue_size` (Integer, default: `100`):
+
+  Queu size of subscription.
+* `~clear_assembled_scans` (Bool, default: `false`)
+
+   Do not use assembled scans twice.
+* `~skip_number` (Integer, default: `1`):
+
+   Skip publishing and calling laser assembler per `~skip_number`.
+* `~twist_frame_id`
+
+  Frame id used in twist velocity.
 * `~use_laser_assembler` (Boolean, default: `False`):
 
    Enable `~output_cloud` and `~assemble_scans2`.
+* `~not_use_laser_assembler_service` (Boolean, default: `False`)
+
+   When it is true, do not use laser_assembler service but assemble scan pointcloud locally.
 * `~joint_name` (String, **required**):
 
    Joint name of actuator to rotate laser.
@@ -1414,29 +2037,89 @@ It also publishes tf of centroids of each cluster and oriented bounding box of t
 * `~use_pca` (Boolean, default: `False`):
 
    Run PCA algorithm on each cluster to estimate x and y direction.
+* `~force_to_flip_z_axis` (Boolean, default: `False`)
+
+   Flip z axis direction if this value is true.
 
 ### jsk\_pcl/ClusterPointIndicesDecomposerZAxis
 #### What Is This
 This nodelet is almost same to jsk\_pcl/ClusterPointIndicesDecomposer, however it always sort clusters in z direction.
 
+### jsk\_pcl/PoseWithCovarianceStampedToGaussianPointCloud
+![](images/pose_with_covariance_stamped_to_gaussian_pointcloud.gif)
+
+Visualize `geometry_msgs/PoseWithCovarianceStamped` as gaussian pointcloud.
+Pointcloud is computed within a region of 3 sigma.
+
+#### Subscribing Topics
+* `~input` (`geometry_msgs/PoseWithCovarianceStamped`)
+
+  Input pose
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud
+
+#### Parameters
+* `~cut_plane` (default: `xy`)
+
+  You can choose a plane to compute gaussian distribution from `xy`, `yz` or `zx`.
+* `~sampling_num` (default: `10`)
+
+  The number of sampling for each axis. The number of points will square of `~sampling_num`.
+* `~normalize_method` (default: `normalize_area`)
+* `~normalize_value` (default: `1.0`)
+
+  You can choose `normalize_area` or `normalize_height` to normalize gaussian distribution.
+  If you choo `normalize_area`, area of gaussian distribution will be `~normalize_value`.
+  If you choo `normalize_height`, the maximum height of gaussian distribution will be `~normalize_value`.
+
+### jsk\_pcl/ColorizeHeight2DMapping
+![](images/colorize_height_2d_mapping.png)
+
+Utility nodelet to visualize heightmap as pointcloud.
+It just set all the z of points 0 and assign z to intensity.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/PointCloud2`)
+
+
+  Input pointcloud.
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud. z values of points are 0 and intensity of points
+  has z value.
+
 ### jsk\_pcl/CentroidPublisher
 #### What Is This
 
-This nodelet will subscribe the sensor\_msgs::PointCloud2, calculate its centroid  and boardcast the tf whose parent is cloud headers frame\_id and whose child is the new centroid frame_id.
+This nodelet will subscribe the sensor\_msgs::PointCloud2, calculate its centroid and
+publish tf, `geometry_msgs/PoseStamped` and `geometry_msgs/PointStamped`.
+The nodelet boardcast the tf whose parent is cloud headers frame\_id and whose child is the new centroid frame_id.
 
 #### Subscribing Topics
 * `~input` (`sensor_msgs/PointCloud2`):
 
    input pointcloud.
 #### Publishing Topics
-* `/tf`:
+* `/tf`
 
    Publish tf of the centroid of the input pointcloud.
+* `~output/pose` (`geometry_msgs/PoseStamped`)
 
+   centroid of the pointcloud as `geometry_msgs/PoseStamped`.
+* `~output/point` (`geometry_msgs/PointStamped`)
+
+   centroid of the pointcloud as `geometry_msgs/PointStamped`.
 #### Parameters
 * `~frame` (String, required):
 
    frame_id of centroid tf
+* `~publish_tf` (Boolean, default: `False`)
+  Set this parameter true in order to publish tf frame.
 
 #### Sample
 Plug the depth sensor which can be launched by openni.launch and run the below command.
@@ -1689,7 +2372,15 @@ This nodelet will republish the pointcloud which is transformed with the designa
 
 #### Parameters
 * `~target_frame_id` (string): The frame_id to transform pointcloud.
+* `~duration` (Double, default: `1.0`)
 
+  Second to wait for transformation
+* `~use_latest_tf` (Bool, default: `false`)
+
+  If this parameter is true, ignore timestamp of tf to transform pointcloud.
+* `~tf_queue_size` (Int, default: `10`)
+
+  Queue size of tf message filter to synchronize tf and `~input` topic.
 #### Sample
 Plug the depth sensor which can be launched by openni.launch and run the below command.
 
@@ -1697,6 +2388,27 @@ Plug the depth sensor which can be launched by openni.launch and run the below c
 roslaunch jsk_pcl_ros tf_transform_cloud.launch
 ```
 
+### jsk\_pcl/TfTransformBoundingBox
+This nodelet will republish bounding box which is transformed with the designated frame_id.
+
+#### Subscribing Topics
+* `~input` (`jsk_recognition_msgs/BoundingBox`)
+
+  input bounding box.
+
+#### Publishing Topics
+* `~output` (`jsk_recognition_msgs/BoundingBox`)
+
+  output bounding box.
+
+#### Parameters
+* `~target_frame_id` (string): The frame_id to transform pointcloud.
+* `~use_latest_tf` (Bool, default: `false`)
+
+  If this parameter is true, ignore timestamp of tf to transform pointcloud.
+* `~tf_queue_size` (Int, default: `10`)
+
+  Queue size of tf message filter to synchronize tf and `~input` topic.
 
 ## Depth Camera Calibration(Kinect,Xtion,Primesense)
 ![](images/depth_calibration.png)
@@ -1744,6 +2456,297 @@ Checking the Rviz output when you find the calibrated pointcloud overlaps the Po
 
 * Finish and Check it again.
 
+### jsk\_pcl/SphericalPointCloudSimulator
+![](images/spherical_pointcloud_simulator.h)
+
+Simulate a pointcloud which is acquired by spindle laser. Sensor model is
+spherical laser.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  This topic is only used to synchronize timestamp of `~output` pointcloud
+  to certain pointcloud. If no `~frame_id` is specified, frame_id of `~input`
+  is copied to `~output`.
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Simulated pointcloud.
+
+#### Parameters
+* `~frame_id` (String, default: None)
+
+  frame_id of output pointcloud. If not specified, frame\_id of `~input` is copied.
+* `~r` (Double, default: `3.0`)
+
+  Radius of spherical model.
+* `~min_phi` (Double, default: `0.0`)
+
+  Minimum angle of scanning plane.
+* `~max_phi` (Double, default: `2pi`)
+
+  Maximum angle of scanning plane.
+* `~scan_range` (Double, default: `4.7`)
+
+  Scan range of laser. The default value is same to hokuyo's parameter.
+* `~scan_num` (Integer, default: `1081`)
+
+  The number of points in one scan of laser.
+  The default value is same to hokuyo's parameter.
+* `~fps` (Double, default: `40`)
+
+  Fps of laser sensor.
+  The default value is same to hokuyo's parameter.
+
+### jsk\_pcl/FisheyeSpherePublisher
+![](images/fisheye_rviz.h)
+
+Show the sphere generated from fisheye image.
+This was tested with Prosilica GC 2450C + nm30 lens
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/Image`)
+  Fisheye Image
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Sphere pointcloud.
+
+
+
+### jsk\_pcl/PlanarlPointCloudSimulator
+![](images/planar_pointcloud_simulator.h)
+
+Simulate a pointcloud which is acquired by cameras such as stereo camera and kinect.
+Sensor model is pinhole camera model.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/CameraInfo`)
+
+  Camera info to simulate pointcloud.
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Simulated pointcloud.
+
+#### Parameters
+* `~distance` (Double, default: `1.0`)
+
+  Distance to pointcloud from origin along z-axis.
+
+
+### jsk\_pcl/ConvexConnectedVoxels
+![](images/convex_connected_voxels.png)
+
+Merges the voxels initially segmented using SuperVoxel Segmentation into high level object representations by merging the voxels based on convexity measurements.
+
+#### Subscribing Topics
+* `~input` (`jsk_recognition_msgs/ClusterPointIndices`)
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input is set of voxel indices and point cloud from the supervoxel_segmentation nodelet
+
+#### Publishing Topics
+* `~output/indices` (`jsk_recognition_msgs/ClusterPointIndices`)
+
+  Output is set of merged voxel indices
+
+### jsk\_pcl/NormalFlipToFrame
+Flip normal direction towards specified frame.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud. It should have normal fields.
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
+
+  Output pointcloud whose normal vector orients toward specified frame by `~frame_id`.
+
+#### Parameters
+* `~frame_id` (String, **required**)
+
+  Frame ID which to be oriented by normal vectors.
+* `~strict_tf` (Bool, default: `false`)
+
+  Do not take into account timestamp if this parameter is false.
+
+### jsk\_pcl/Kinfu
+Publishes camera pose using pcl/KinfuLS
+
+#### Subscribing Topics
+* `~input/info` (`sensor_msgs/CameraInfo`)
+
+  Intrinsic camera parameter of depth image
+* `~input/depth` (`sensor_msgs/Image`)
+
+  Depth image in m and the format should be 32FC1
+* `~input/color` (`sensor_msgs/Image`)
+
+  RGB color image (not yet used)
+
+#### Publishing Topics
+* `~output` (`geometry_msgs/PoseStamped`)
+
+  Pose of camera
+* `~output/cloud` (`sensor_msgs/PointCloud2`)
+
+  Registered scene pointcloud
+
+### jsk\_pcl/PlaneSupportedCuboidEstimator
+![](images/plane_supported_cuboid_estimator.png)
+
+Estimate a cuboid on a plane. Plane information is used as hint.
+It uses particle filter to estimate pose of cuboid.
+
+`jsk_pcl/InteractiveCuboidLikelihood` is a helper nodelet
+to confirm likelihood function behaves as expected.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Input pointcloud
+* `~input/polygon` (`jsk_recognition_msgs/PolygonArray`)
+* `~input/coefficients` (`jsk_recognition_msgs/ModelCoefficientsArray`)
+
+  Planes which may support cuboid object
+
+#### Publishing Topics
+* `~output/result` (`jsk_recognition_msgs/BoundingBoxArray`)
+
+  Result of estimation as bonding box.
+* `~output/particles` (`sensor_msgs/PointCloud2`)
+
+  Particles as pointcloud (xyzi)
+* `~output/histogram/global/x` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/global/y` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/global/z` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/global/roll` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/global/pitch` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/global/yaw` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/dx` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/dy` (`jsk_recognition_msgs/HistogramWithRange`)
+* `~output/histogram/dz` (`jsk_recognition_msgs/HistogramWithRange`)
+
+  Histograms of particles for each dimension
+
+#### Advertising Services
+* `~reset` (`std_srvs/Empty`)
+
+  Reset particles filters.
+
+#### Parameters
+* `~init_local_position_z_min`
+* `~init_local_position_z_max`
+* `~use_init_world_position_z_model`
+* `~init_local_orientation_roll_variance`
+* `~init_local_orientation_pitch_variance`
+* `~init_local_orientation_yaw_mean`
+* `~init_local_orientation_yaw_variance`
+* `~init_dx_mean`
+* `~init_dx_variance`
+* `~init_dy_mean`
+* `~init_dy_variance`
+* `~init_dz_mean`
+* `~init_dz_variance`
+* `~particle_num`
+* `~step_x_variance`
+* `~step_y_variance`
+* `~step_z_variance`
+* `~step_roll_variance`
+* `~step_pitch_variance`
+* `~step_yaw_variance`
+* `~step_dx_variance`
+* `~step_dy_variance`
+* `~step_dz_variance`
+* `~use_range_likelihood` (default: `False`)
+
+  Set to true if you want to update likelihood based on geometry respected to plane.
+* `~range_likelihood_local_min_z`
+* `~range_likelihood_local_max_z`
+
+  Allowed inimum and maximum distance from plane.
+* `~use_occlusion_likelihood` (default: `False`)
+
+  Take occlusion into acount when compute likelihood.
+* `~min_inliers` (default: `10`)
+
+  Minimum number of inliers.
+* `~outlier_distance` (default: `0.01`)
+
+  Threshold to regard points as inlier.
+* `~sensor_frame` (default: `odom`)
+
+  Frame ID of sensor frame. It is used to compute viewpoint and occlusion.
+
+### jsk\_pcl/ExtractCuboidParticlesTopN
+Extract top-N particles of `pcl::tracking::ParticleCuboid`.
+
+#### Publishing Topics
+* `~output` (`pcl_msgs/PointIndices`)
+
+  Top-N particles indices.
+* `~output/box_array` (`jsk_recognition_msgs/BoundingBoxArray`)
+
+  Top-N particles as BoundingBoxArray.
+
+#### Subscribing Topics
+* `~input` (`sensor_msgs/PointCloud2`)
+
+  Particle cloud of `pcl::tracking::ParticleCuboid`.
+  All the weights are expected to be normalized.
+
+#### Parameters
+* `top_n_ratio` (default: `0.9`)
+
+  Ratio of top-N.
+
+### jsk\_pcl/BoundingBoxOcclusionRejector
+![](images/boundingbox_occlusion_rejector.png)
+Rejects bounding boxes which occludes target object.
+
+sample
+```
+$ roslaunch sample_boundingbox_occlusion_rejector.launch
+```
+
+#### Publishing Topics
+* `~output` (`jsk_recognition_msgs/BoundingBoxArray`)
+
+  Occlusion free candidate bounding boxes.
+* `~output/target_image` (`sensor_msgs/Image`)
+
+  Simulated rendered image of target object.
+* `~output/candidate_image` (`sensor_msgs/Image`)
+
+  Simulated rendered image of candidate object.
+
+#### Subscribing Topics
+* `~input/camera_info` (`sensor_msgs/CameraInfo`)
+
+  CameraInfo of sensor.
+* `~input/target_boxes` (`jsk_recognition_msgs/BoundingBoxArray`)
+
+  BoundingBox array to represent target objects to see.
+* `~input/candidate_boxes` (`jsk_recognition_msgs/BoundingBoxArray`)
+
+  BoundingBox array of candidate poses.
+### jsk\_pcl/PCDReaderWithPose
+Publish cloud with given pose
+
+#### Parameters
+* `~pcd_file` (Strng)
+file name of pcd for publish
+
+#### Subscribing Topocs
+* `~input` (`geometry_msgs/PoseStamped`)
+
+#### Publishing Topics
+* `~output` (`sensor_msgs/PointCloud2`)
 
 
 ## To Test Some Samples

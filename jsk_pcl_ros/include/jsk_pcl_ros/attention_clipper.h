@@ -43,6 +43,7 @@
 #include "jsk_pcl_ros/geo_util.h"
 #include "jsk_pcl_ros/tf_listener_singleton.h"
 #include <image_geometry/pinhole_camera_model.h>
+#include <jsk_recognition_msgs/ClusterPointIndices.h>
 #include <jsk_recognition_msgs/BoundingBoxArray.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/Image.h>
@@ -53,7 +54,7 @@ namespace jsk_pcl_ros
   {
   public:
     AttentionClipper(): DiagnosticNodelet("AttentionClipper") { }
-    
+
   protected:
     ////////////////////////////////////////////////////////
     // methods
@@ -87,6 +88,8 @@ namespace jsk_pcl_ros
     ros::Publisher pub_bounding_box_array_;
     ros::Publisher pub_mask_;
     ros::Publisher pub_indices_;
+    ros::Publisher pub_cluster_indices_;
+    std::vector<ros::Publisher> multiple_pub_indices_;
     tf::TransformListener* tf_listener_;
     boost::mutex mutex_;
 
@@ -99,9 +102,12 @@ namespace jsk_pcl_ros
     std::vector<Eigen::Affine3f> pose_list_;
     std::vector<std::string> frame_id_list_;
     Vertices dimensions_;
+    std::vector<std::string > prefixes_;
+
     bool use_multiple_attention_;
+    bool negative_;
   private:
-    
+
   };
 }
 

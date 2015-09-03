@@ -36,6 +36,7 @@
 #include "jsk_pcl_ros/icp_registration.h"
 #include <pcl/registration/icp.h>
 #include <pcl/registration/gicp.h>
+#include <pcl/registration/ndt.h>
 #include "jsk_pcl_ros/pcl_conversion_util.h"
 #include <eigen_conversions/eigen_msg.h>
 #include <pcl/common/transforms.h>
@@ -43,11 +44,13 @@
 #include "jsk_pcl_ros/transform_pointcloud_in_bounding_box.h"
 #include <image_geometry/pinhole_camera_model.h>
 #include <pcl/registration/correspondence_estimation_organized_projection.h>
+#include <pcl/registration/correspondence_estimation_normal_shooting.h>
 
 namespace jsk_pcl_ros
 {
   void ICPRegistration::onInit()
   {
+    pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
     ConnectionBasedNodelet::onInit();
     tf_listener_ = TfListenerSingleton::getInstance();
     ////////////////////////////////////////////////////////
@@ -55,10 +58,10 @@ namespace jsk_pcl_ros
     ////////////////////////////////////////////////////////
     srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (*pnh_);
     dynamic_reconfigure::Server<Config>::CallbackType f =
-      boost::bind (
+      boost::bind(
         &ICPRegistration::configCallback, this, _1, _2);
     srv_->setCallback (f);
-    
+    pnh_->param("use_normal", use_normal_, false);
     pnh_->param("align_box", align_box_, false);
     pnh_->param("synchronize_reference", synchronize_reference_, false);
     ////////////////////////////////////////////////////////
@@ -169,7 +172,12 @@ namespace jsk_pcl_ros
     transform_epsilon_ = config.transform_epsilon;
     euclidean_fittness_epsilon_ = config.euclidean_fittness_epsilon;
     rotation_epsilon_ = config.rotation_epsilon;
+    ransac_iterations_ = config.ransac_iterations;
+    ransac_outlier_threshold_ = config.ransac_outlier_threshold;
     maximum_optimizer_iterations_ = config.maximum_optimizer_iterations;
+    ndt_resolution_ = config.ndt_resolution;
+    ndt_step_size_ = config.ndt_step_size;
+    ndt_outlier_ratio_ = config.ndt_outlier_ratio;
   }
 
   bool ICPRegistration::alignWithBoxService(
@@ -178,7 +186,7 @@ namespace jsk_pcl_ros
   {
      boost::mutex::scoped_lock lock(mutex_);
     if (reference_cloud_list_.size() == 0) {
-      NODELET_FATAL("no reference is specified");
+      JSK_NODELET_FATAL("no reference is specified");
       return false;
     }
     try
@@ -194,12 +202,12 @@ namespace jsk_pcl_ros
     }
     catch (tf2::ConnectivityException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
       return false;
     }
     catch (tf2::InvalidArgumentException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
       return false;
     }
     return true;
@@ -227,7 +235,7 @@ namespace jsk_pcl_ros
       }
       new_references.push_back(non_nan_reference_cloud);
       reference_cloud_list_ = new_references; // replace references
-      NODELET_INFO("reference points: %lu/%lu",
+      JSK_NODELET_INFO("reference points: %lu/%lu",
                    non_nan_reference_cloud->points.size(),
                    reference_cloud->points.size());
       Eigen::Affine3f offset = Eigen::Affine3f::Identity();
@@ -239,13 +247,13 @@ namespace jsk_pcl_ros
     }
     catch (tf2::ConnectivityException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
       reference_cloud_list_ = tmp_reference_cloud_list;
       return false;
     }
     catch (tf2::InvalidArgumentException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
       reference_cloud_list_ = tmp_reference_cloud_list;
       return false;
     }
@@ -260,10 +268,10 @@ namespace jsk_pcl_ros
   {
     boost::mutex::scoped_lock lock(mutex_);
     if (reference_cloud_list_.size() == 0) {
-      NODELET_FATAL("no reference is specified");
+      JSK_NODELET_FATAL("no reference is specified");
       jsk_recognition_msgs::ICPResult result;
       result.name = std::string("NONE");
-      result.score = 0.0;
+      result.score = DBL_MAX;
       result.header = box_msg->header;
       result.pose = box_msg->pose;
       pub_icp_result.publish(result);
@@ -283,11 +291,11 @@ namespace jsk_pcl_ros
     }
     catch (tf2::ConnectivityException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
     }
     catch (tf2::InvalidArgumentException &e)
     {
-      NODELET_ERROR("Transform error: %s", e.what());
+      JSK_NODELET_ERROR("[%s] Transform error: %s", __PRETTY_FUNCTION__, e.what());
     }
   }
 
@@ -295,14 +303,22 @@ namespace jsk_pcl_ros
   {
     boost::mutex::scoped_lock lock(mutex_);
     if (reference_cloud_list_.size() == 0) {
-      NODELET_FATAL("no reference is specified");
+      JSK_NODELET_FATAL("no reference is specified");
       return;
     }
     
     pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
     pcl::fromROSMsg(*msg, *cloud);
     Eigen::Affine3f offset = Eigen::Affine3f::Identity();
-    jsk_recognition_msgs::ICPResult result = alignPointcloudWithReferences(cloud, offset, msg->header);
+    // remove nan
+    pcl::PointCloud<PointT>::Ptr non_nan_cloud (new pcl::PointCloud<PointT>);
+    for (size_t i = 0; i < cloud->points.size(); i++) {
+      PointT p = cloud->points[i];
+      if (!isnan(p.x) && !isnan(p.y) && !isnan(p.z)) {
+        non_nan_cloud->points.push_back(p);
+      }
+    }
+    jsk_recognition_msgs::ICPResult result = alignPointcloudWithReferences(non_nan_cloud, offset, msg->header);
     pub_icp_result.publish(result);
   }
   
@@ -360,7 +376,7 @@ namespace jsk_pcl_ros
       }
     }
     
-    NODELET_INFO("best score is: %f", min_score);
+    JSK_NODELET_INFO("best score is: %f", min_score);
     if (pub_result_cloud_.getNumSubscribers() > 0) {
       sensor_msgs::PointCloud2 ros_final;
       pcl::toROSMsg(*best_transformed_cloud, ros_final);
@@ -395,7 +411,7 @@ namespace jsk_pcl_ros
     boost::mutex::scoped_lock lock(mutex_);
     camera_info_msg_ = msg;
   }
-  
+
   double ICPRegistration::alignPointcloud(
     pcl::PointCloud<PointT>::Ptr& cloud,
     pcl::PointCloud<PointT>::Ptr& reference,
@@ -403,7 +419,58 @@ namespace jsk_pcl_ros
     pcl::PointCloud<PointT>::Ptr& output_cloud,
     Eigen::Affine3d& output_transform)
   {
+    if (algorithm_ == 0 || algorithm_ == 1) {
+      return alignPointcloudWithICP(cloud, reference, offset, output_cloud, output_transform);
+    }
+    else {
+      return alignPointcloudWithNDT(cloud, reference, offset, output_cloud, output_transform);
+    }
+  }
+
+  
+  double ICPRegistration::alignPointcloudWithNDT(
+    pcl::PointCloud<PointT>::Ptr& cloud,
+    pcl::PointCloud<PointT>::Ptr& reference,
+    const Eigen::Affine3f& offset,
+    pcl::PointCloud<PointT>::Ptr& output_cloud,
+    Eigen::Affine3d& output_transform)
+  {
+    pcl::NormalDistributionsTransform<PointT, PointT> ndt;
+    if (reference->points.empty ()) {
+      JSK_NODELET_ERROR("Input Reference Cloud is empty!");
+      return DBL_MAX;
+    }
+    ndt.setInputSource(reference);
+    if (cloud->points.empty ()) {
+      JSK_NODELET_ERROR("Input Target Cloud is empty!");
+      return DBL_MAX;
+    }
+    ndt.setInputTarget(cloud);
+    pcl::PointCloud<PointT> final;
+    ndt.align(final);
+    pcl::transformPointCloud(final, *output_cloud, offset);
+    Eigen::Matrix4f transformation = ndt.getFinalTransformation ();
+    Eigen::Matrix4d transformation_d;
+    convertMatrix4<Eigen::Matrix4f, Eigen::Matrix4d>(
+      transformation, transformation_d);
+    Eigen::Affine3d offsetd;
+    convertEigenAffine3(offset, offsetd);
+    output_transform = offsetd * Eigen::Affine3d(transformation_d);
+    return ndt.getFitnessScore();
+  }
+  
+  double ICPRegistration::alignPointcloudWithICP(
+    pcl::PointCloud<PointT>::Ptr& cloud,
+    pcl::PointCloud<PointT>::Ptr& reference,
+    const Eigen::Affine3f& offset,
+    pcl::PointCloud<PointT>::Ptr& output_cloud,
+    Eigen::Affine3d& output_transform)
+  {
     pcl::IterativeClosestPoint<PointT, PointT> icp;
+    if (use_normal_) {
+      pcl::IterativeClosestPointWithNormals<PointT, PointT> icp_with_normal;
+      icp = icp_with_normal;
+    }
     // icp.setInputSource(cloud);
     // icp.setInputTarget(reference_cloud_);
     if (algorithm_ == 1) {
@@ -415,31 +482,43 @@ namespace jsk_pcl_ros
     }
     if (correspondence_algorithm_ == 1) { // Projective
       if (!camera_info_msg_) {
-        NODELET_ERROR("no camera info is available yet");
+        JSK_NODELET_ERROR("no camera info is available yet");
         return DBL_MAX;
       }
       image_geometry::PinholeCameraModel model;
       bool model_success_p = model.fromCameraInfo(camera_info_msg_);
       if (!model_success_p) {
-        NODELET_ERROR("failed to create camera model");
+        JSK_NODELET_ERROR("failed to create camera model");
         return DBL_MAX;
       }
       pcl::registration::CorrespondenceEstimationOrganizedProjection<PointT, PointT, float>::Ptr
         corr_projection (new pcl::registration::CorrespondenceEstimationOrganizedProjection<PointT, PointT, float>);
       corr_projection->setFocalLengths(model.fx(), model.fy());
       corr_projection->setCameraCenters(model.cx(), model.cy());
+      icp.setCorrespondenceEstimation(corr_projection);
+    }
+    
+    if (reference->points.empty ()) {
+      JSK_NODELET_ERROR("Input Reference Cloud is empty!");
+      return DBL_MAX;
     }
     icp.setInputSource(reference);
+    if (cloud->points.empty ()) {
+      JSK_NODELET_ERROR("Input Target Cloud is empty!");
+      return DBL_MAX;
+    }
     icp.setInputTarget(cloud);
     icp.setMaxCorrespondenceDistance (correspondence_distance_);
     icp.setMaximumIterations (max_iteration_);
     icp.setTransformationEpsilon (transform_epsilon_);
     icp.setEuclideanFitnessEpsilon (euclidean_fittness_epsilon_);
+    icp.setRANSACIterations(ransac_iterations_);
+    icp.setRANSACOutlierRejectionThreshold(ransac_outlier_threshold_);
     pcl::PointCloud<PointT> final;
     icp.align(final);
     pcl::transformPointCloud(final, *output_cloud, offset);
-    // NODELET_INFO_STREAM("ICP converged: " << icp.hasConverged());
-    // NODELET_INFO_STREAM("ICP score: " << icp.getFitnessScore());
+    // JSK_NODELET_INFO_STREAM("ICP converged: " << icp.hasConverged());
+    // JSK_NODELET_INFO_STREAM("ICP score: " << icp.getFitnessScore());
     Eigen::Matrix4f transformation = icp.getFinalTransformation ();
     Eigen::Matrix4d transformation_d;
     convertMatrix4<Eigen::Matrix4f, Eigen::Matrix4d>(
@@ -481,7 +560,7 @@ namespace jsk_pcl_ros
         = alignPointcloud(flipped_cloud, reference, flipped_offset,
                           flipped_transformed_cloud,
                           flipped_transform_result);
-      NODELET_INFO("flipped score: %f", flipped_score);
+      JSK_NODELET_INFO("flipped score: %f", flipped_score);
       if (flipped_score < score) {
         score = flipped_score;
         transformed_cloud = flipped_transformed_cloud;
@@ -502,7 +581,14 @@ namespace jsk_pcl_ros
     reference_cloud_list_.resize(0);
     pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
     pcl::fromROSMsg(*msg, *cloud);
-    reference_cloud_list_.push_back(cloud);
+    pcl::PointCloud<PointT>::Ptr non_nan_cloud (new pcl::PointCloud<PointT>);
+    for (size_t i = 0; i < cloud->points.size(); i++) {
+      PointT p = cloud->points[i];
+      if (!isnan(p.x) && !isnan(p.y) && !isnan(p.z)) {
+        non_nan_cloud->points.push_back(p);
+      }
+    }
+    reference_cloud_list_.push_back(non_nan_cloud);
   }
 
   void ICPRegistration::referenceArrayCallback(
@@ -525,7 +611,7 @@ namespace jsk_pcl_ros
     pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
     pcl::fromROSMsg(*msg, *cloud);
     reference_cloud_list_.push_back(cloud);
-    ROS_INFO("reference_num: %zd", reference_cloud_list_.size()-1);
+    JSK_ROS_INFO("reference_num: %zd", reference_cloud_list_.size()-1);
   }  
 }
 

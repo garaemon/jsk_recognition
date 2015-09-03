@@ -2,6 +2,62 @@
 Changelog for package imagesift
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.17 (2015-08-21)
+-------------------
+
+0.2.16 (2015-08-19)
+-------------------
+
+0.2.15 (2015-08-18)
+-------------------
+* Add cmake_modules
+* Contributors: Kei Okada
+
+0.2.14 (2015-08-13)
+-------------------
+* CMakeLists.txt, imagefeatures.cpp.in: a lot of detector is not available on opencv3
+* [imagesift] modify mask region when mask region has no region
+* [imagesift] Add sample of imagesift
+* [imagesift] Use super class nodehandler
+* [imagesift] Make imagesift as nodelet
+* Contributors: Kei Okada, Kentaro Wada, Hitoshi Kamada
+
+0.2.13 (2015-06-11)
+-------------------
+* [imagesift] Add header file of imagesift
+* [imagesift] Add Feature0D as output
+* Contributors: Kentaro Wada
+
+0.2.12 (2015-05-04)
+-------------------
+
+0.2.11 (2015-04-13)
+-------------------
+
+0.2.10 (2015-04-09)
+-------------------
+
+0.2.9 (2015-03-29)
+------------------
+* 0.2.8
+* Update Changelog
+* Contributors: Ryohei Ueda
+
+0.2.8 (2015-03-29)
+------------------
+
+0.2.7 (2015-03-26)
+------------------
+
+0.2.6 (2015-03-25)
+------------------
+
+0.2.5 (2015-03-17)
+------------------
+
+0.2.4 (2015-03-08)
+------------------
+
 0.2.3 (2015-02-02)
 ------------------
 * Remove rosbuild files

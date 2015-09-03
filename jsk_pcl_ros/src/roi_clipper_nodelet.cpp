@@ -40,7 +40,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/opencv.hpp>
 #include <image_geometry/pinhole_camera_model.h>
-
+#include "jsk_pcl_ros/pcl_conversion_util.h"
 
 namespace jsk_pcl_ros
 {
@@ -53,6 +53,7 @@ namespace jsk_pcl_ros
     pub_image_ = advertise<sensor_msgs::Image>(*pnh_, "output", 1);
     if (not_sync_) {
       pub_cloud_ = advertise<sensor_msgs::PointCloud2>(*pnh_, "output/cloud", 1);
+      pub_cloud_indices_ = advertise<PCLIndicesMsg>(*pnh_, "output/cloud_indices", 1);
     }
   }
 
@@ -99,7 +100,7 @@ namespace jsk_pcl_ros
       cv::Mat image = cv_ptr->image;
       cv::Rect roi(camera_info_msg->roi.x_offset, camera_info_msg->roi.y_offset,
                    camera_info_msg->roi.width, camera_info_msg->roi.height);
-      //NODELET_INFO("roi::(%d, %d, %d, %d)", roi.x, roi.y, roi.width, roi.height);
+      //JSK_NODELET_INFO("roi::(%d, %d, %d, %d)", roi.x, roi.y, roi.width, roi.height);
       cv::Mat image_roi = image(roi);
       // cv::imshow("roi", image_roi);
       // cv::waitKey(3);
@@ -110,7 +111,7 @@ namespace jsk_pcl_ros
     }
     catch (cv_bridge::Exception& e)
     {
-      NODELET_ERROR("cv_bridge exception: %s", e.what());
+      JSK_NODELET_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
   }
@@ -138,6 +139,7 @@ namespace jsk_pcl_ros
     vital_checker_->poke();
     if (latest_camera_info_) {
       image_geometry::PinholeCameraModel model;
+      PCLIndicesMsg indices;
       model.fromCameraInfo(latest_camera_info_);
       pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud
         (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -155,6 +157,7 @@ namespace jsk_pcl_ros
           cv::Point2d uv = model.project3dToPixel(cv::Point3d(p.x, p.y, p.z));
           if (uv.x >= 0 && uv.x <= region.width &&
               uv.y >= 0 && uv.y <= region.height) {
+            indices.indices.push_back(i);
             clipped_cloud->points.push_back(p);
             foundp = true;
           }
@@ -171,6 +174,8 @@ namespace jsk_pcl_ros
       pcl::toROSMsg(*clipped_cloud, ros_cloud);
       ros_cloud.header = cloud_msg->header;
       pub_cloud_.publish(ros_cloud);
+      indices.header = cloud_msg->header;
+      pub_cloud_indices_.publish(indices);
     }
   }
   
