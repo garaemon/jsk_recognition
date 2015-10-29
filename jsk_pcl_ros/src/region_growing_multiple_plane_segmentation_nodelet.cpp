@@ -123,6 +123,7 @@ namespace jsk_pcl_ros
     const sensor_msgs::PointCloud2::ConstPtr& normal_msg)
   {
     boost::mutex::scoped_lock lock(mutex_);
+    ros::WallTime start = ros::WallTime::now();
     vital_checker_->poke();
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
     pcl::PointCloud<pcl::Normal>::Ptr normal(new pcl::PointCloud<pcl::Normal>);
@@ -237,6 +238,8 @@ namespace jsk_pcl_ros
         all_coefficients, msg->header);
     pub_coefficients_.publish(ros_coefficients);
     pub_polygons_.publish(ros_polygon);
+    ros::WallTime end = ros::WallTime::now();
+    ROS_INFO("region growing took %f sec", (end - start).toSec());
   }
 
   double RegionGrowingMultiplePlaneSegmentation::global_angular_threshold = 0.0;

@@ -94,7 +94,7 @@ namespace jsk_pcl_ros
       // respected from msg->header.frame_id
       tf::StampedTransform transform;
       tf_listener_->lookupTransform(
-        target_frame_id_, msg->header.frame_id, msg->header.stamp, transform);
+        msg->header.frame_id, target_frame_id_, msg->header.stamp, transform);
       Eigen::Affine3f pose;
       tf::transformTFToEigen(transform, pose);
 
@@ -106,7 +106,8 @@ namespace jsk_pcl_ros
         double distance;
         Eigen::Vector3f foot = polygon->nearestPoint(pose.translation(), distance);
         Eigen::Vector3f foot_dir = (foot - pose.translation()).normalized();
-        double ang_distance = std::abs(reference_axis.dot(foot_dir));
+        double theta = acos(reference_axis.dot(foot_dir));
+        double ang_distance = theta / M_PI;
         distances.push_back(ang_distance);
       }
 
@@ -114,7 +115,7 @@ namespace jsk_pcl_ros
       for (size_t i = 0; i < distances.size(); i++) {
         // double normalized_distance
         //   = (distances[i] - min_distance) / (max_distance - min_distance);
-        double likelihood = 1 / (1 + (distances[i] - 1) * (distances[i] - 1));
+        double likelihood = 1 / (1 + distances[i] * distances[i]);
         
         if (msg->likelihood.size() == 0) {
           new_msg.likelihood.push_back(likelihood);

@@ -305,6 +305,10 @@ namespace jsk_pcl_ros
                                   const std_msgs::Header& header);
     virtual bool resetCallback(std_srvs::EmptyRequest& req,
                                std_srvs::EmptyResponse& res);
+    virtual bool lockCallback(std_srvs::EmptyRequest& req,
+                               std_srvs::EmptyResponse& res);
+    virtual bool unlockCallback(std_srvs::EmptyRequest& req,
+                                std_srvs::EmptyResponse& res);
 
     /**
      * @brief
@@ -337,6 +341,8 @@ namespace jsk_pcl_ros
     ros::Publisher pub_histogram_dy_;
     ros::Publisher pub_histogram_dz_;
     ros::ServiceServer srv_reset_;
+    ros::ServiceServer srv_lock_;
+    ros::ServiceServer srv_unlock_;
     message_filters::Subscriber<jsk_recognition_msgs::PolygonArray> sub_polygon_;
     message_filters::Subscriber<jsk_recognition_msgs::ModelCoefficientsArray> sub_coefficients_;
     boost::shared_ptr<message_filters::Synchronizer<PolygonSyncPolicy> > sync_polygon_;
@@ -377,7 +383,7 @@ namespace jsk_pcl_ros
     double step_dx_variance_;
     double step_dy_variance_;
     double step_dz_variance_;
-
+    bool locked_;
     double min_dx_;
     double min_dy_;
     double min_dz_;
@@ -388,6 +394,8 @@ namespace jsk_pcl_ros
     boost::mt19937 random_generator_;
     tf::TransformListener* tf_;
     Eigen::Vector3f viewpoint_;
+    std::string robot_frame_;
+    std::string particle_frame_;
     bool support_plane_updated_;
     pcl::tracking::ROSCollaborativeParticleFilterTracker<pcl::PointXYZ, pcl::tracking::ParticleCuboid>::Ptr tracker_;
     std::vector<Polygon::Ptr> polygons_;

@@ -75,6 +75,7 @@ namespace jsk_pcl_ros
   {
     boost::mutex::scoped_lock lock(mutex_);
     vital_checker_->poke();
+    ros::WallTime start = ros::WallTime::now();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr
       cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromROSMsg(*cloud_msg, *cloud);
@@ -112,6 +113,8 @@ namespace jsk_pcl_ros
     pcl::toROSMsg(*normal_xyz, ros_normal_xyz_cloud);
     ros_normal_xyz_cloud.header = cloud_msg->header;
     pub_with_xyz_.publish(ros_normal_xyz_cloud);
+    ros::WallTime end = ros::WallTime::now();
+    ROS_INFO("normal estimation took %f sec", (end - start).toSec());
   }
 }
 

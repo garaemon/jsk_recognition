@@ -53,10 +53,12 @@ namespace jsk_pcl_ros
     DiagnosticNodelet::onInit();
     tf_ = TfListenerSingleton::getInstance();
     srv_ = boost::make_shared <dynamic_reconfigure::Server<Config> > (*pnh_);
+    locked_ = false;
     typename dynamic_reconfigure::Server<Config>::CallbackType f =
       boost::bind (&PlaneSupportedCuboidEstimator::configCallback, this, _1, _2);
     srv_->setCallback (f);
     pnh_->param("sensor_frame", sensor_frame_, std::string("odom"));
+    pnh_->param("robot_frame", robot_frame_, std::string("BODY"));
     pub_result_ = pnh_->advertise<jsk_recognition_msgs::BoundingBoxArray>("output/result", 1);
     pub_particles_ = pnh_->advertise<sensor_msgs::PointCloud2>("output/particles", 1);
     pub_candidate_cloud_ = pnh_->advertise<sensor_msgs::PointCloud2>("output/candidate_cloud", 1);
@@ -80,6 +82,8 @@ namespace jsk_pcl_ros
     sub_fast_cloud_ = pnh_->subscribe("fast_input", 1, &PlaneSupportedCuboidEstimator::fastCloudCallback,
                                       this);
     srv_reset_ = pnh_->advertiseService("reset", &PlaneSupportedCuboidEstimator::resetCallback, this);
+    srv_lock_ = pnh_->advertiseService("lock", &PlaneSupportedCuboidEstimator::lockCallback, this);
+    srv_unlock_ = pnh_->advertiseService("unlock", &PlaneSupportedCuboidEstimator::unlockCallback, this);
   }
 
   void PlaneSupportedCuboidEstimator::subscribe()
@@ -150,8 +154,23 @@ namespace jsk_pcl_ros
     ParticleCloud::Ptr particles = tracker_->getParticles();
     Eigen::Vector4f center;
     pcl::compute3DCentroid(*particles, center);
-    if (center.norm() < fast_cloud_threshold_) {
-      estimate(msg);
+    if (!particle_frame_.empty()) {
+      tf::StampedTransform robot_pose_tf;
+      tf_->lookupTransform(particle_frame_, robot_frame_, ros::Time(0.0), robot_pose_tf);
+      Eigen::Affine3d robot_pose;
+      tf::transformTFToEigen(robot_pose_tf, robot_pose);
+      Eigen::Vector3d robot_to_particle 
+        = Eigen::Vector3d(robot_pose.translation()) - Eigen::Vector3d(center[0], center[1], center[2]);
+      if (robot_to_particle.norm() < fast_cloud_threshold_) {
+        estimate(msg);
+        particle_frame_ = msg->header.frame_id;
+      }
+    }
+    else {
+      if (center.norm() < fast_cloud_threshold_) {
+        estimate(msg);
+        particle_frame_ = msg->header.frame_id;
+      }
     }
   }
 
@@ -267,6 +286,10 @@ namespace jsk_pcl_ros
   {
     boost::mutex::scoped_lock lock(mutex_);
     NODELET_INFO("cloudCallback");
+    if (locked_) {
+      ROS_INFO("locked");
+      return;
+    }
     if (!latest_polygon_msg_ || !latest_coefficients_msg_) {
       JSK_NODELET_WARN("Not yet polygon is available");
       return;
@@ -313,10 +336,25 @@ namespace jsk_pcl_ros
     }
     else {
       ParticleCloud::Ptr particles = tracker_->getParticles();
-      Eigen::Vector4f center;
+      Eigen::Vector4f center;   // particle_frame_ -> target
       pcl::compute3DCentroid(*particles, center);
-      if (center.norm() > fast_cloud_threshold_) {
-        estimate(msg);
+      if (!particle_frame_.empty()) {
+        tf::StampedTransform robot_pose_tf;
+        tf_->lookupTransform(particle_frame_, robot_frame_, ros::Time(0.0), robot_pose_tf);
+        Eigen::Affine3d robot_pose;
+        tf::transformTFToEigen(robot_pose_tf, robot_pose);
+        Eigen::Vector3d robot_to_particle 
+          = Eigen::Vector3d(robot_pose.translation()) - Eigen::Vector3d(center[0], center[1], center[2]);
+        if (robot_to_particle.norm() > fast_cloud_threshold_) {
+          estimate(msg);
+          particle_frame_ = msg->header.frame_id;
+        }
+      }
+      else {
+        if (center.norm() > fast_cloud_threshold_) {
+          estimate(msg);
+          particle_frame_ = msg->header.frame_id;
+        }
       }
     }
   }
@@ -432,8 +470,12 @@ namespace jsk_pcl_ros
     std::vector<Polygon::Ptr> polygons(latest_polygon_msg_->polygons.size());
     for (size_t i = 0; i < latest_polygon_msg_->polygons.size(); i++) {
       Polygon::Ptr polygon = Polygon::fromROSMsgPtr(latest_polygon_msg_->polygons[i].polygon);
+      polygon->decomposeToTriangles();
       polygons[i] = polygon;
     }
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for (size_t i = 0; i < particle_num_; i++) {
       while (true) {
         pcl::tracking::ParticleCuboid p_local;
@@ -508,6 +550,20 @@ namespace jsk_pcl_ros
     fast_cloud_threshold_ = config.fast_cloud_threshold;
     disable_init_roll_ = config.disable_init_roll;
     disable_init_pitch_ = config.disable_init_pitch;
+  }
+  
+  bool PlaneSupportedCuboidEstimator::lockCallback(std_srvs::EmptyRequest& req,
+                                                    std_srvs::EmptyResponse& res)
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    locked_ = true;
+  }
+
+  bool PlaneSupportedCuboidEstimator::unlockCallback(std_srvs::EmptyRequest& req,
+                                                    std_srvs::EmptyResponse& res)
+  {
+    boost::mutex::scoped_lock lock(mutex_);
+    locked_ = false;
   }
 
   bool PlaneSupportedCuboidEstimator::resetCallback(std_srvs::EmptyRequest& req,
