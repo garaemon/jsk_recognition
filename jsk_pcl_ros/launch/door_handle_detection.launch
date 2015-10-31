@@ -53,6 +53,10 @@
   <node pkg="jsk_pcl_ros" type="organized_multi_plane_segmentation"
         name="organized_multi_plane_segmentation">
     <remap from="~input" to="/odom_stereo/output" />
+    <rosparam>
+      min_size: 200
+      max_curvature: 0.01
+    </rosparam>
   </node>
   <node pkg="jsk_pcl_ros" type="cluster_point_indices_decomposer"
         name="organized_multi_plane_decomposer">
