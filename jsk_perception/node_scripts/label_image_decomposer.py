@@ -5,7 +5,7 @@ import numpy as np
 
 import cv_bridge
 from jsk_recognition_utils import bounding_rect_of_mask
-from jsk_recognition_utils import get_tile_image
+from jsk_recognition_utils.visualize import get_tile_image
 from jsk_topic_tools import ConnectionBasedTransport
 from jsk_topic_tools import jsk_loginfo
 from jsk_topic_tools import warn_no_remap

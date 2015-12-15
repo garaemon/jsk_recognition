@@ -4,7 +4,7 @@
 import sys
 
 import cv_bridge
-import jsk_recognition_utils
+import jsk_recognition_utils.visualize
 from jsk_topic_tools import ConnectionBasedTransport
 import message_filters
 import rospy
@@ -39,7 +39,7 @@ class TileImages(ConnectionBasedTransport):
         for msg in msgs:
             img = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
             imgs.append(img)
-        out_bgr = jsk_recognition_utils.get_tile_image(imgs)
+        out_bgr = jsk_recognition_utils.visualize.get_tile_image(imgs)
         imgmsg = bridge.cv2_to_imgmsg(out_bgr, encoding='bgr8')
         self.pub_img.publish(imgmsg)
 
