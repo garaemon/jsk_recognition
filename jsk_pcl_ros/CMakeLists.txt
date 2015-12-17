@@ -171,7 +171,7 @@ endif ($ENV{TRAVIS_JOB_ID})
 # pcl_ros::Filter based class is not working...
 # https://github.com/ros-perception/perception_pcl/issues/9
 jsk_pcl_nodelet(src/pointcloud_screenpoint_nodelet.cpp "jsk_pcl/PointcloudScreenpoint" "pointcloud_screenpoint")
-jsk_pcl_nodelet(src/normal_flip_to_frame_nodelet.cpp "jsk_pcl/NormalFlipToFrame"
+jsk_pcl_util_nodelet(src/normal_flip_to_frame_nodelet.cpp "jsk_pcl/NormalFlipToFrame"
   "normal_flip_to_frame")
 jsk_pcl_nodelet(src/particle_filter_tracking_nodelet.cpp "jsk_pcl/ParticleFilterTracking" "particle_filter_tracking")
 jsk_pcl_nodelet(src/voxel_grid_downsample_manager_nodelet.cpp "jsk_pcl/VoxelGridDownsampleManager" "voxel_grid_downsample_manager")
@@ -192,9 +192,9 @@ jsk_pcl_nodelet(src/image_rotate_nodelet.cpp
   "jsk_pcl/ImageRotateNodelet" "image_rotate")
 jsk_pcl_nodelet(src/octree_change_publisher_nodelet.cpp
   "jsk_pcl/OctreeChangePublisher" "octree_change_publisher")
-jsk_pcl_nodelet(src/tf_transform_cloud_nodelet.cpp
+jsk_pcl_util_nodelet(src/tf_transform_cloud_nodelet.cpp
   "jsk_pcl/TfTransformCloud" "tf_transform_cloud")
-jsk_pcl_nodelet(src/tf_transform_bounding_box_nodelet.cpp
+jsk_pcl_util_nodelet(src/tf_transform_bounding_box_nodelet.cpp
   "jsk_pcl/TfTransformBoundingBox" "tf_transform_bounding_box")
 jsk_pcl_nodelet(src/tf_transform_bounding_box_array_nodelet.cpp
   "jsk_pcl/TfTransformBoundingBoxArray" "tf_transform_bounding_box_array")
@@ -210,7 +210,7 @@ jsk_pcl_nodelet(src/cluster_point_indices_decomposer_z_axis_nodelet.cpp
   "jsk_pcl/ClusterPointIndicesDecomposerZAxis" "cluster_point_indices_decomposer_z_axis")
 jsk_pcl_nodelet(src/resize_points_publisher_nodelet.cpp
   "jsk_pcl/ResizePointsPublisher" "resize_points_publisher")
-jsk_pcl_nodelet(src/normal_concatenater_nodelet.cpp
+jsk_pcl_util_nodelet(src/normal_concatenater_nodelet.cpp
   "jsk_pcl/NormalConcatenater" "normal_concatenater")
 jsk_pcl_nodelet(src/normal_estimation_integral_image_nodelet.cpp
   "jsk_pcl/NormalEstimationIntegralImage" "normal_estimation_integral_image")
@@ -223,7 +223,7 @@ jsk_pcl_nodelet(src/organized_multi_plane_segmentation_nodelet.cpp
   "jsk_pcl/OrganizedMultiPlaneSegmentation" "organized_multi_plane_segmentation")
 jsk_pcl_nodelet(src/multi_plane_extraction_nodelet.cpp
   "jsk_pcl/MultiPlaneExtraction" "multi_plane_extraction")
-jsk_pcl_nodelet(src/selected_cluster_publisher_nodelet.cpp
+jsk_pcl_util_nodelet(src/selected_cluster_publisher_nodelet.cpp
   "jsk_pcl/SelectedClusterPublisher" "selected_cluster_publisher")
 jsk_pcl_util_nodelet(src/polygon_array_distance_likelihood_nodelet.cpp
   "jsk_pcl/PolygonArrayDistanceLikelihood" "polygon_array_distance_likelihood")
@@ -318,11 +318,11 @@ jsk_pcl_nodelet(src/organized_pass_through_nodelet.cpp
   "jsk_pcl/OrganizedPassThrough" "organized_pass_through")
 jsk_pcl_util_nodelet(src/plane_reasoner_nodelet.cpp
   "jsk_pcl/PlaneReasoner" "plane_reasoner")
-jsk_pcl_nodelet(src/joint_state_static_filter_nodelet.cpp
+jsk_pcl_util_nodelet(src/joint_state_static_filter_nodelet.cpp
   "jsk_pcl/JointStateStaticFilter" "joint_state_static_filter")
 jsk_pcl_nodelet(src/icp_registration_nodelet.cpp
   "jsk_pcl/ICPRegistration" "icp_registration")
-jsk_pcl_nodelet(src/transform_pointcloud_in_bounding_box_nodelet.cpp
+jsk_pcl_util_nodelet(src/transform_pointcloud_in_bounding_box_nodelet.cpp
   "jsk_pcl/TransformPointcloudInBoundingBox" "transform_pointcloud_in_bounding_box")
 jsk_pcl_nodelet(src/pointcloud_database_server_nodelet.cpp
   "jsk_pcl/PointcloudDatabaseServer" "pointcloud_database_server")
@@ -336,21 +336,21 @@ jsk_pcl_nodelet(src/depth_calibration_nodelet.cpp
   "jsk_pcl/DepthCalibration" "depth_calibration")
 jsk_pcl_nodelet(src/tilt_laser_listener_nodelet.cpp
   "jsk_pcl/TiltLaserListener" "tilt_laser_listener")
-jsk_pcl_nodelet(src/normal_direction_filter_nodelet.cpp
+jsk_pcl_util_nodelet(src/normal_direction_filter_nodelet.cpp
   "jsk_pcl/NormalDirectionFilter" "normal_direction_filter")
 jsk_pcl_nodelet(src/attention_clipper_nodelet.cpp
   "jsk_pcl/AttentionClipper" "attention_clipper")
 jsk_pcl_nodelet(src/boundingbox_occlusion_rejector_nodelet.cpp
   "jsk_pcl/BoundingBoxOcclusionRejector" "boundingbox_occlusion_rejector")
-jsk_pcl_nodelet(src/roi_clipper_nodelet.cpp
+jsk_pcl_util_nodelet(src/roi_clipper_nodelet.cpp
   "jsk_pcl/ROIClipper" "roi_clipper")
-jsk_pcl_nodelet(src/point_indices_to_mask_image_nodelet.cpp
+jsk_pcl_util_nodelet(src/point_indices_to_mask_image_nodelet.cpp
   "jsk_pcl/PointIndicesToMaskImage" "point_indices_to_mask_image")
 jsk_pcl_nodelet(src/extract_indices_nodelet.cpp
   "jsk_pcl/ExtractIndices" "extract_indices")
-jsk_pcl_nodelet(src/mask_image_to_depth_considered_mask_image_nodelet.cpp
+jsk_pcl_util_nodelet(src/mask_image_to_depth_considered_mask_image_nodelet.cpp
   "jsk_pcl/MaskImageToDepthConsideredMaskImage" "mask_image_to_depth_considered_mask_image")
-jsk_pcl_nodelet(src/mask_image_to_point_indices_nodelet.cpp
+jsk_pcl_util_nodelet(src/mask_image_to_point_indices_nodelet.cpp
   "jsk_pcl/MaskImageToPointIndices" "mask_image_to_point_indices")
 jsk_pcl_nodelet(src/organized_pointcloud_to_point_indices_nodelet.cpp
   "jsk_pcl/OrganizedPointCloudToPointIndices" "organized_pointcloud_to_point_indices")
@@ -362,7 +362,7 @@ jsk_pcl_nodelet(src/linemod_nodelet.cpp
   "jsk_pcl/LINEMODTrainer" "linemod_trainer")
 jsk_pcl_nodelet(src/linemod_nodelet.cpp
   "jsk_pcl/LINEMODDetector" "linemod_detector")
-jsk_pcl_nodelet(src/intermittent_image_annotator_nodelet.cpp
+jsk_pcl_util_nodelet(src/intermittent_image_annotator_nodelet.cpp
   "jsk_pcl/IntermittentImageAnnotator" "intermittent_image_annotator")
 jsk_pcl_nodelet(src/incremental_model_registration_nodelet.cpp
   "jsk_pcl/IncrementalModelRegistration" "incremental_model_registration")
@@ -370,14 +370,14 @@ jsk_pcl_nodelet(src/supervoxel_segmentation_nodelet.cpp
   "jsk_pcl/SupervoxelSegmentation" "supervoxel_segmentation")
 jsk_pcl_util_nodelet(src/plane_concatenator_nodelet.cpp
   "jsk_pcl/PlaneConcatenator" "plane_concatenator")
-jsk_pcl_nodelet(src/add_color_from_image_nodelet.cpp
+jsk_pcl_util_nodelet(src/add_color_from_image_nodelet.cpp
   "jsk_pcl/AddColorFromImage" "add_color_from_image")
 jsk_pcl_nodelet(src/torus_finder_nodelet.cpp "jsk_pcl/TorusFinder" "torus_finder")
-jsk_pcl_nodelet(src/mask_image_filter_nodelet.cpp
+jsk_pcl_util_nodelet(src/mask_image_filter_nodelet.cpp
   "jsk_pcl/MaskImageFilter" "mask_image_filter")
-jsk_pcl_nodelet(src/mask_image_cluster_filter_nodelet.cpp
+jsk_pcl_util_nodelet(src/mask_image_cluster_filter_nodelet.cpp
   "jsk_pcl/MaskImageClusterFilter" "mask_image_cluster_filter")
-jsk_pcl_nodelet(src/add_point_indices_nodelet.cpp
+jsk_pcl_util_nodelet(src/add_point_indices_nodelet.cpp
   "jsk_pcl/AddPointIndices" "add_point_indices")
 jsk_pcl_nodelet(src/find_object_on_plane_nodelet.cpp "jsk_pcl/FindObjectOnPlane" "find_object_on_plane")
 jsk_pcl_nodelet(src/hinted_stick_finder_nodelet.cpp
@@ -429,8 +429,6 @@ add_library(jsk_pcl_ros_base SHARED
   src/viewpoint_sampler.cpp)
 add_library(jsk_pcl_ros_moveit SHARED src/pointcloud_moveit_filter.cpp)
 add_library(jsk_pcl_ros SHARED ${jsk_pcl_nodelet_sources})
-add_library(jsk_pcl_ros_util SHARED ${jsk_pcl_util_nodelet_sources})
-target_link_libraries(jsk_pcl_ros_util jsk_pcl_ros_base)
 if (PCL_GPU_KINFU_LARGE_SCALE_FOUND)
   target_link_libraries(jsk_pcl_ros
     ${PCL_GPU_KINFU_LARGE_SCALE_LIBRARY}
@@ -447,13 +445,9 @@ if (robot_self_filter_FOUND)
 endif (robot_self_filter_FOUND)
 
 add_dependencies(jsk_pcl_ros ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_gencfg)
-add_dependencies(jsk_pcl_ros_util ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_gencfg)
 add_dependencies(jsk_pcl_ros_base ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_gencfg)
 add_dependencies(jsk_pcl_ros_moveit ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(jsk_pcl_ros_util
-  ${catkin_LIBRARIES} ${pcl_ros_LIBRARIES} ${OpenCV_LIBRARIES} yaml-cpp
-  jsk_pcl_ros_base)
 target_link_libraries(jsk_pcl_ros_base
   ${catkin_LIBRARIES} ${pcl_ros_LIBRARIES} ${OpenCV_LIBRARIES} yaml-cpp)
 # moveit_ros_perception is excluded from catkin COMPONENTS because of collision about octomap dependency
@@ -512,12 +506,12 @@ catkin_package(
     DEPENDS pcl
     CATKIN_DEPENDS pcl_ros message_runtime ${PCL_MSGS} sensor_msgs geometry_msgs jsk_recognition_msgs jsk_recognition_utils
     INCLUDE_DIRS include
-    LIBRARIES jsk_pcl_ros jsk_pcl_ros_base jsk_pcl_ros_util jsk_pcl_ros_moveit
+    LIBRARIES jsk_pcl_ros jsk_pcl_ros_base jsk_pcl_ros_moveit
 )
 
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
-install(TARGETS jsk_pcl_ros jsk_pcl_ros_base jsk_pcl_ros_util jsk_pcl_ros_moveit
+install(TARGETS jsk_pcl_ros jsk_pcl_ros_base jsk_pcl_ros_moveit
   ${jsk_pcl_nodelet_executables}
   ${jsk_pcl_util_nodelet_executables}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
